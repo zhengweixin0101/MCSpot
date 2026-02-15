@@ -1,84 +1,119 @@
 #!/bin/bash
-set -e
 
-# ------------------------
-# 配置
-# ------------------------
 MCS_DIR="/opt/mcs"
-WORLD_DIR="$MCS_DIR/world"
-ZIP_FILE="$MCS_DIR/world.zip"
-
 ENDPOINT="https://s3.cn-east-1.qiniucs.com"
 BUCKET="zwxmc"
-INSTANCE_ID="ins-p0b0thon"
+API_BASE="https://sha-zi-jiang-jing-han-bu-yao-luan-fa.zhengweixin.top"
 
-IDLE_SECONDS=0
-IDLE_THRESHOLD=30  # 空闲30秒自动关服
+# 删除实例函数
+terminate_instance() {
+    if [ -n "$INSTANCE_ID" ]; then
+        echo "[AUTO] 删除实例 $INSTANCE_ID..."
+        curl -s "$API_BASE/api/terminate-instance?instanceId=$INSTANCE_ID"
+        echo "[AUTO] 实例删除请求已发送"
+    fi
+}
 
-# ------------------------
-# 获取本机 IP（公网 IP）
-# ------------------------
-IP=$(curl -s https://api.ipify.org)
-if [ -z "$IP" ]; then
-    echo "[ERROR] 获取本机公网 IP 失败"
+# 错误处理函数
+cleanup() {
+    echo "[AUTO] 脚本出错或中断，执行清理..."
+    terminate_instance
+    exit 1
+}
+
+trap cleanup EXIT
+trap cleanup ERR
+
+IDLE_COUNT=0          # 空闲计数器
+IDLE_THRESHOLD=150      # 空闲 150 次（ 150 * 10 = 1500 秒，即 25 分钟）触发自动关服
+
+# 动态获取 INSTANCE_ID
+echo "[AUTO] 获取实例列表..."
+INSTANCES_JSON=$(curl -s "https://sha-zi-jiang-jing-han-bu-yao-luan-fa.zhengweixin.top/api/instances")
+SUCCESS=$(echo "$INSTANCES_JSON" | jq -r '.success')
+
+if [ "$SUCCESS" != "true" ]; then
+    echo "[AUTO] 获取实例列表失败，脚本退出"
     exit 1
 fi
 
-echo "[AUTO] 开始监听 Minecraft 在线玩家，服务器 IP: $IP"
+COUNT=$(echo "$INSTANCES_JSON" | jq -r '.count')
+
+if [ "$COUNT" -eq 0 ]; then
+    echo "[AUTO] 未找到任何实例，脚本退出"
+    exit 1
+elif [ "$COUNT" -gt 1 ]; then
+    echo "[AUTO] 发现多个实例，脚本退出"
+    exit 1
+fi
+
+INSTANCE_ID=$(echo "$INSTANCES_JSON" | jq -r '.instances[0].instanceId')
+echo "[AUTO] 实例 ID = $INSTANCE_ID"
+
+echo "[AUTO] 获取当前实例公网 IP..."
+IP_JSON=$(curl -s "https://sha-zi-jiang-jing-han-bu-yao-luan-fa.zhengweixin.top/api/instance-ip?instanceId=$INSTANCE_ID")
+PUBLIC_IP=$(echo "$IP_JSON" | jq -r '.publicIp')
+
+if [ -z "$PUBLIC_IP" ] || [ "$PUBLIC_IP" == "null" ]; then
+    echo "[AUTO] 无法获取公网 IP，脚本退出"
+    exit 1
+fi
+
+echo "[AUTO] 实例公网 IP = $PUBLIC_IP"
+echo "[AUTO] 开始监听 Minecraft 玩家状态..."
 
 while true; do
-    sleep 10  # 每10秒查询一次
+    sleep 10   # 每 10 秒检测一次
 
     # 查询 Minecraft Server Status API
-    JSON=$(curl -s -A "Mozilla/5.0" "https://api.mcsrvstat.us/3/$IP")
+    STATUS_JSON=$(curl -s -A "Mozilla/5.0" "https://api.mcsrvstat.us/3/$PUBLIC_IP")
+    ONLINE=$(echo "$STATUS_JSON" | jq -r '.online')
+    PLAYERS=$(echo "$STATUS_JSON" | jq -r '.players.online // 0')
 
-    ONLINE=$(echo "$JSON" | jq -r '.online')
-    PLAYERS=$(echo "$JSON" | jq -r '.players.online // 0')
-
-    TIMESTAMP=$(date "+%Y-%m-%d %H:%M:%S")
-
-    if [ "$ONLINE" != "true" ] || [ "$PLAYERS" -eq 0 ]; then
-        IDLE_SECONDS=$((IDLE_SECONDS + 10))
-        echo "$TIMESTAMP 无玩家在线，空闲 $IDLE_SECONDS 秒"
+    if [ "$ONLINE" == "true" ] && [ "$PLAYERS" -gt 0 ]; then
+        IDLE_COUNT=0
+        echo "$(date) 玩家在线: $PLAYERS"
     else
-        IDLE_SECONDS=0
-        echo "$TIMESTAMP 玩家在线: $PLAYERS"
+        IDLE_COUNT=$((IDLE_COUNT+1))
+        echo "$(date) 无玩家在线，空闲 $((IDLE_COUNT*10)) 秒"
     fi
 
-    # 空闲达到阈值，开始自动关服
-    if [ "$IDLE_SECONDS" -ge "$IDLE_THRESHOLD" ]; then
-        echo "$TIMESTAMP 空闲 $IDLE_SECONDS 秒，开始自动关服..."
+    # 空闲超过阈值执行关服逻辑
+    if [ "$IDLE_COUNT" -ge "$IDLE_THRESHOLD" ]; then
+        echo "[AUTO] 空闲 $((IDLE_COUNT*10)) 秒，开始自动关服..."
 
-        # 停止 MC 服务端
-        PID=$(pgrep -f "1.21.11-server.jar" || true)
-        if [ -n "$PID" ]; then
-            echo "[AUTO] 停止 Minecraft 服务端 (PID=$PID)..."
-            kill "$PID"
-            sleep 5
+    # 关闭 Minecraft 服务端
+    MC_PID=$(pgrep -f "/opt/mcs/1.21.11-server.jar")
+    if [ -n "$MC_PID" ]; then
+        echo "[AUTO] 关闭 Minecraft 服务端 PID=$MC_PID"
+        kill $MC_PID
+        # 等待进程完全退出
+        sleep 5
+        if ps -p $MC_PID > /dev/null; then
+            echo "[AUTO] 强制杀掉未退出的服务端"
+            kill -9 $MC_PID
         fi
+    else
+        echo "[AUTO] 未找到 Minecraft 服务端进程"
+    fi
+        sleep 5
 
-        # 压缩 world 文件夹
-        echo "[AUTO] 压缩 world 文件夹..."
-        if command -v zip >/dev/null 2>&1; then
-            rm -f "$ZIP_FILE"
-            zip -r "$ZIP_FILE" "$WORLD_DIR"
-        else
-            echo "[ERROR] zip 命令未安装，请先安装 zip"
-            exit 1
-        fi
+        # 备份世界
+        cd "$MCS_DIR"
+        rm -f world.zip
+        zip -r world.zip world
 
         # 上传到七牛 S3
-        echo "[AUTO] 上传 world.zip 到七牛 S3..."
-        aws s3 cp "$ZIP_FILE" "s3://$BUCKET/world.zip" --endpoint-url "$ENDPOINT"
+        aws s3 cp world.zip "s3://$BUCKET/world.zip" --endpoint-url "$ENDPOINT"
+        echo "[AUTO] world.zip 上传完成"
 
-        echo "[AUTO] 确认上传..."
-        aws s3 ls "s3://$BUCKET/world.zip" --endpoint-url "$ENDPOINT"
+        # 调用 API 删除实例
+        terminate_instance
 
-        # 通知本地 API 删除实例
-        #echo "[AUTO] 通知本地 API 删除实例..."
-        #curl -fsS "http://localhost:3000/api/terminate-instance?instanceId=$INSTANCE_ID"
-
-        echo "[AUTO] 自动关服完成"
         exit 0
     fi
 done
+
+# 正常退出时取消 trap
+trap - EXIT
+trap - ERR

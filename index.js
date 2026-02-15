@@ -125,6 +125,16 @@ app.get('/api/run-instance', async (req, res) => {
 
   console.log(`创建实例请求: TemplateID=${templateId}, Version=${templateVersion || 'DEFAULT'}`);
 
+  // 检查现有实例数量
+  const existingResult = await describeInstancesList();
+  if (existingResult.success && existingResult.instances.length > 0) {
+    console.log(`已有 ${existingResult.instances.length} 个实例，禁止创建新实例`);
+    return res.status(400).json({
+      success: false,
+      message: '已存在实例，无法创建。最多只允许一个实例。'
+    });
+  }
+
   const result = await runInstances(templateId, templateVersion || 'DEFAULT');
 
   if (result.success) {
