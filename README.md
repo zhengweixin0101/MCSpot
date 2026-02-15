@@ -377,7 +377,7 @@ curl "http://localhost:3000/api/instance-ip?instanceId=ins-abc123"
 # 响应: {"success": true, "publicIp": "1.2.3.4", ...}
 
 # 4. 直接获取当前实例公网IP（无需指定实例ID）
-curl "http://localhost:3000/api/get-single-instance-ip"
+curl "http://localhost:3000/api/get-instance-ip"
 # 响应: {"success": true, "publicIp": "1.2.3.4", ...}
 
 # 5. 使用完服务器后，删除实例
