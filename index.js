@@ -294,6 +294,65 @@ app.get('/api/instance-ip', async (req, res) => {
   }
 });
 
+// GET 请求接口 - 获取当前实例公网IP
+app.get('/api/get-instance-ip', async (req, res) => {
+  console.log('获取当前实例公网IP请求');
+
+  const result = await describeInstancesList();
+
+  if (!result.success) {
+    console.error(`获取实例列表失败: ${result.error}`);
+    return res.status(500).json({
+      success: false,
+      message: '获取实例列表失败',
+      error: result.error
+    });
+  }
+
+  if (result.instances.length === 0) {
+    console.log('没有实例');
+    return res.json({
+      success: false,
+      message: '没有实例'
+    });
+  }
+
+  if (result.instances.length > 1) {
+    console.log(`存在 ${result.instances.length} 个实例`);
+    return res.json({
+      success: false,
+      message: '错误，存在多个实例',
+      count: result.instances.length
+    });
+  }
+
+  const instance = result.instances[0];
+
+  if (instance.InstanceState !== 'RUNNING') {
+    console.log(`实例 ${instance.InstanceId} 状态: ${instance.InstanceState}`);
+    return res.json({
+      success: false,
+      message: '实例未启动',
+      instanceId: instance.InstanceId,
+      instanceState: instance.InstanceState
+    });
+  }
+
+  const publicIp = instance.PublicIpAddresses && instance.PublicIpAddresses.length > 0
+    ? instance.PublicIpAddresses[0]
+    : null;
+
+  console.log(`实例 ${instance.InstanceId} 公网IP: ${publicIp || '未分配'}`);
+
+  res.json({
+    success: true,
+    instanceId: instance.InstanceId,
+    instanceName: instance.InstanceName,
+    publicIp,
+    instanceState: instance.InstanceState
+  });
+});
+
 // 健康检查接口
 app.get('/health', (req, res) => {
   res.json({
@@ -310,4 +369,5 @@ app.listen(PORT, () => {
   console.log(`删除实例: GET /api/terminate-instance?instanceId=<实例ID>`);
   console.log(`获取实例列表: GET /api/instances`);
   console.log(`获取实例公网IP: GET /api/instance-ip?instanceId=<实例ID>`);
+  console.log(`获取当前实例公网IP: GET /api/get-instance-ip`);
 });

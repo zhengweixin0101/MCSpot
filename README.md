@@ -262,7 +262,61 @@ curl "http://localhost:3000/api/instance-ip?instanceId=ins-abc123xyz"
 
 ---
 
-### 6. 健康检查
+### 6. 获取当前实例公网IP
+
+自动检查实例列表，如果只有一个实例且状态为运行中，返回该实例的公网IP。
+
+**请求**
+```
+GET /api/get-instance-ip
+```
+
+**请求示例**
+```bash
+curl "http://localhost:3000/api/get-single-instance-ip"
+```
+
+**响应示例**
+
+成功：
+```json
+{
+  "success": true,
+  "instanceId": "ins-abc123xyz",
+  "instanceName": "my-server",
+  "publicIp": "1.2.3.4",
+  "instanceState": "RUNNING"
+}
+```
+
+失败（没有实例）：
+```json
+{
+  "success": false,
+  "message": "没有实例"
+}
+```
+
+失败（实例未启动）：
+```json
+{
+  "success": false,
+  "message": "实例未启动",
+  "instanceId": "ins-abc123xyz",
+  "instanceState": "STOPPED"
+}
+```
+
+失败（多个实例）：
+```json
+{
+  "success": false,
+  "message": "错误，存在多个实例",
+  "count": 2
+}
+```
+
+### 7. 健康检查
 
 检查服务是否正常运行。
 
@@ -322,7 +376,11 @@ curl "http://localhost:3000/api/instances"
 curl "http://localhost:3000/api/instance-ip?instanceId=ins-abc123"
 # 响应: {"success": true, "publicIp": "1.2.3.4", ...}
 
-# 4. 使用完服务器后，删除实例
+# 4. 直接获取当前实例公网IP（无需指定实例ID）
+curl "http://localhost:3000/api/get-single-instance-ip"
+# 响应: {"success": true, "publicIp": "1.2.3.4", ...}
+
+# 5. 使用完服务器后，删除实例
 curl "http://localhost:3000/api/terminate-instance?instanceId=ins-abc123"
 ```
 
