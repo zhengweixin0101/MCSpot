@@ -15,29 +15,29 @@ fi
 # 进入 MC 服务器目录
 cd "$MCS_DIR"
 
-# 删除旧的备份文件（如果存在）
-if [ -f "world_backup.zip" ]; then
-    echo "[BACKUP] 删除旧备份文件..."
-    rm -f world_backup.zip
-fi
+# 获取日期时间
+DATETIME=$(date +"%Y-%m-%d-%H-%M-%S")
+BACKUP_FILE="world_backup_${DATETIME}.zip"
+
+echo "[BACKUP] 备份文件名: $BACKUP_FILE"
 
 # 压缩世界数据
 echo "[BACKUP] 正在压缩 world 目录..."
-zip -r world_backup.zip world
+zip -r "$BACKUP_FILE" world
 
 if [ $? -ne 0 ]; then
     echo "[BACKUP] 压缩失败！"
     exit 1
 fi
 
-echo "[BACKUP] 压缩完成，文件大小: $(du -h world_backup.zip | cut -f1)"
+echo "[BACKUP] 压缩完成，文件大小: $(du -h "$BACKUP_FILE" | cut -f1)"
 
 # 上传到七牛 S3
 echo "[BACKUP] 正在上传到 S3..."
-aws s3 cp world_backup.zip "s3://$BUCKET/world_backup.zip" --endpoint-url "$ENDPOINT"
+aws s3 cp "$BACKUP_FILE" "s3://$BUCKET/$BACKUP_FILE" --endpoint-url "$ENDPOINT"
 
 if [ $? -eq 0 ]; then
-    echo "[BACKUP] ✓ 备份成功！world_backup.zip 已上传到 S3"
+    echo "[BACKUP] ✓ 备份成功！$BACKUP_FILE 已上传到 S3"
 else
     echo "[BACKUP] ✗ 上传失败！"
     exit 1
