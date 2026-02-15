@@ -25,7 +25,7 @@ trap cleanup EXIT
 trap cleanup ERR
 
 IDLE_COUNT=0          # 空闲计数器
-IDLE_THRESHOLD=150      # 空闲 150 次（ 150 * 10 = 1500 秒，即 25 分钟）触发自动关服
+IDLE_THRESHOLD=5       # 连续 5 次无玩家触发自动关服（5 * 2 分钟 = 10 分钟）
 
 # 动态获取 INSTANCE_ID
 echo "[AUTO] 获取实例列表..."
@@ -63,7 +63,7 @@ echo "[AUTO] 实例公网 IP = $PUBLIC_IP"
 echo "[AUTO] 开始监听 Minecraft 玩家状态..."
 
 while true; do
-    sleep 10   # 每 10 秒检测一次
+    sleep 120   # 每 2 分钟检测一次
 
     # 查询 Minecraft Server Status API
     STATUS_JSON=$(curl -s -A "Mozilla/5.0" "https://api.mcsrvstat.us/3/$PUBLIC_IP")
@@ -72,15 +72,15 @@ while true; do
 
     if [ "$ONLINE" == "true" ] && [ "$PLAYERS" -gt 0 ]; then
         IDLE_COUNT=0
-        echo "$(date) 玩家在线: $PLAYERS"
+        echo "$(date) 玩家在线: $PLAYERS，重置空闲计数"
     else
         IDLE_COUNT=$((IDLE_COUNT+1))
-        echo "$(date) 无玩家在线，空闲 $((IDLE_COUNT*10)) 秒"
+        echo "$(date) 无玩家在线，空闲计数: $IDLE_COUNT/$IDLE_THRESHOLD"
     fi
 
     # 空闲超过阈值执行关服逻辑
     if [ "$IDLE_COUNT" -ge "$IDLE_THRESHOLD" ]; then
-        echo "[AUTO] 空闲 $((IDLE_COUNT*10)) 秒，开始自动关服..."
+        echo "[AUTO] 连续 $IDLE_COUNT 次检测无玩家（共 $((IDLE_COUNT*2)) 分钟），开始自动关服..."
 
     # 关闭 Minecraft 服务端
     MC_PID=$(pgrep -f "/opt/mcs/1.21.11-server.jar")
