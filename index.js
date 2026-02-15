@@ -344,13 +344,7 @@ app.get('/api/get-instance-ip', async (req, res) => {
 
   console.log(`实例 ${instance.InstanceId} 公网IP: ${publicIp || '未分配'}`);
 
-  res.json({
-    success: true,
-    instanceId: instance.InstanceId,
-    instanceName: instance.InstanceName,
-    publicIp,
-    instanceState: instance.InstanceState
-  });
+  res.send(publicIp || '无公网IP');
 });
 
 // 健康检查接口
