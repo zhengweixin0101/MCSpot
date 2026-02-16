@@ -3,16 +3,16 @@ set -e
 
 MC_JAR="/opt/mcs/1.21.11-server.jar"
 
-ENDPOINT="https://s3.cn-east-1.qiniucs.com"
-BUCKET="zwxmc"
+ENDPOINT="https://3e074a499835faf39e26a69ca96198e9.r2.cloudflarestorage.com"
+BUCKET="cdn"
 
 AUTO_SHUTDOWN="/opt/auto_shutdown.sh"
 
 mkdir -p /opt/mcs
 cd /opt/mcs
 
-echo "[START] 从七牛 S3 下载 world.zip ..."
-aws s3 cp "s3://$BUCKET/world.zip" world.zip \
+echo "[START] 从 S3 下载 world.zip ..."
+aws s3 cp "s3://$BUCKET/mc/world.zip" world.zip \
   --endpoint-url "$ENDPOINT"
 
 echo "[START] 清理旧的 world 文件夹..."

@@ -1,8 +1,8 @@
 #!/bin/bash
 
 MCS_DIR="/opt/mcs"
-ENDPOINT="https://s3.cn-east-1.qiniucs.com"
-BUCKET="zwxmc"
+ENDPOINT="https://3e074a499835faf39e26a69ca96198e9.r2.cloudflarestorage.com"
+BUCKET="cdn"
 
 echo "[BACKUP] 开始紧急备份..."
 
@@ -32,9 +32,9 @@ fi
 
 echo "[BACKUP] 压缩完成，文件大小: $(du -h "$BACKUP_FILE" | cut -f1)"
 
-# 上传到七牛 S3
+# 上传到 S3
 echo "[BACKUP] 正在上传到 S3..."
-aws s3 cp "$BACKUP_FILE" "s3://$BUCKET/$BACKUP_FILE" --endpoint-url "$ENDPOINT"
+aws s3 cp "$BACKUP_FILE" "s3://$BUCKET/mc/$BACKUP_FILE" --endpoint-url "$ENDPOINT"
 
 if [ $? -eq 0 ]; then
     echo "[BACKUP] ✓ 备份成功！$BACKUP_FILE 已上传到 S3"

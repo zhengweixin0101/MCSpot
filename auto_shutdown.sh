@@ -1,8 +1,8 @@
 #!/bin/bash
 
 MCS_DIR="/opt/mcs"
-ENDPOINT="https://s3.cn-east-1.qiniucs.com"
-BUCKET="zwxmc"
+ENDPOINT="https://3e074a499835faf39e26a69ca96198e9.r2.cloudflarestorage.com"
+BUCKET="cdn"
 API_BASE="https://sha-zi-jiang-jing-han-bu-yao-luan-fa.zhengweixin.top"
 
 # 删除实例函数
@@ -50,9 +50,9 @@ fi
 INSTANCE_ID=$(echo "$INSTANCES_JSON" | jq -r '.instances[0].instanceId')
 echo "[AUTO] 实例 ID = $INSTANCE_ID"
 
+# 从实例列表中获取公网 IP
 echo "[AUTO] 获取当前实例公网 IP..."
-IP_JSON=$(curl -s "https://sha-zi-jiang-jing-han-bu-yao-luan-fa.zhengweixin.top/api/instance-ip?instanceId=$INSTANCE_ID")
-PUBLIC_IP=$(echo "$IP_JSON" | jq -r '.publicIp')
+PUBLIC_IP=$(echo "$INSTANCES_JSON" | jq -r '.instances[0].publicIp')
 
 if [ -z "$PUBLIC_IP" ] || [ "$PUBLIC_IP" == "null" ]; then
     echo "[AUTO] 无法获取公网 IP，脚本退出"
@@ -103,8 +103,8 @@ while true; do
         rm -f world.zip
         zip -r world.zip world
 
-        # 上传到七牛 S3
-        aws s3 cp world.zip "s3://$BUCKET/world.zip" --endpoint-url "$ENDPOINT"
+        # 上传到 S3
+        aws s3 cp world.zip "s3://$BUCKET/mc/world.zip" --endpoint-url "$ENDPOINT"
         echo "[AUTO] world.zip 上传完成"
 
         # 调用 API 删除实例

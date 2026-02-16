@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API文档 - MCSG-Tencent-Cloud-API</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 15px;
+            padding: 30px 40px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo h1 {
+            color: #667eea;
+            font-size: 2.2em;
+        }
+
+        .btn-back {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 1em;
+            transition: background 0.3s ease;
+        }
+
+        .btn-back:hover {
+            background: #764ba2;
+        }
+
+        .section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .section h2 {
+            color: #667eea;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+
+        .endpoint-list {
+            list-style: none;
+        }
+
+        .endpoint-item {
+            background: #f7fafc;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+        }
+
+        .endpoint-item .method {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 3px 10px;
+            border-radius: 3px;
+            font-size: 0.85em;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+
+        .endpoint-item .path {
+            font-family: 'Courier New', monospace;
+            color: #2d3748;
+            font-weight: bold;
+        }
+
+        .endpoint-item .description {
+            display: block;
+            margin-top: 10px;
+            color: #4a5568;
+        }
+
+        .code-block {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+            overflow-x: auto;
+        }
+
+        .code-block code {
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+
+        .footer {
+            text-align: center;
+            color: white;
+            padding: 20px;
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <h1>📚 API文档</h1>
+                </div>
+                <a href="/dashboard" class="btn-back">返回控制台</a>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>认证方式</h2>
+            <p style="margin-bottom: 15px;">所有API接口需要在请求头中添加 Authorization 字段：</p>
+            <div class="code-block">
+                <code>Authorization: Bearer &lt;用户名&gt;:&lt;密码&gt;</code>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>API 端点列表</h2>
+            <ul class="endpoint-list">
+                <li class="endpoint-item">
+                    <span class="method">GET</span>
+                    <span class="path">/api/run-instance</span>
+                    <span class="description">通过启动模板创建新的Minecraft服务器实例 (权限: run_instance)</span>
+                </li>
+
+                <li class="endpoint-item">
+                    <span class="method">GET</span>
+                    <span class="path">/api/start-instance</span>
+                    <span class="description">启动已停止的Minecraft服务器实例 (权限: start_instance)</span>
+                </li>
+
+                <li class="endpoint-item">
+                    <span class="method">GET</span>
+                    <span class="path">/api/terminate-instance</span>
+                    <span class="description">删除指定的Minecraft服务器实例 (权限: terminate_instance)</span>
+                </li>
+
+                <li class="endpoint-item">
+                    <span class="method">GET</span>
+                    <span class="path">/api/instances</span>
+                    <span class="description">查询当前账户下的所有Minecraft服务器实例 (权限: read_instance)</span>
+                </li>
+
+                <li class="endpoint-item">
+                    <span class="method">GET</span>
+                    <span class="path">/api/auth-logs</span>
+                    <span class="description">获取操作日志（仅管理员）(权限: admin)</span>
+                </li>
+
+                <li class="endpoint-item">
+                    <span class="method">GET</span>
+                    <span class="path">/api/user-info</span>
+                    <span class="description">获取当前认证用户的信息 (权限: 任意)</span>
+                </li>
+
+                <li class="endpoint-item">
+                    <span class="method">GET</span>
+                    <span class="path">/health</span>
+                    <span class="description">健康检查（无需认证）</span>
+                </li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2>使用示例</h2>
+            <h3 style="color: #667eea; margin: 15px 0;">创建实例</h3>
+            <div class="code-block">
+                <code>curl -H "Authorization: Bearer admin:password" "<%= baseUrl %>/api/run-instance?templateId=lt-abc123&templateVersion=1"</code>
+            </div>
+
+            <h3 style="color: #667eea; margin: 15px 0;">获取实例列表</h3>
+            <div class="code-block">
+                <code>curl -H "Authorization: Bearer admin:password" "<%= baseUrl %>/api/instances"</code>
+            </div>
+
+            <h3 style="color: #667eea; margin: 15px 0;">获取操作日志</h3>
+            <div class="code-block">
+                <code>curl -H "Authorization: Bearer admin:password" "<%= baseUrl %>/api/auth-logs?limit=10"</code>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>MCSG-Tencent-Cloud-API | API文档</p>
+        </div>
+    </div>
+</body>
+</html>
