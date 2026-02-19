@@ -22,10 +22,11 @@ echo "[START] 解压 world.zip ..."
 unzip -o world.zip
 
 echo "[START] 启动 Minecraft 服务端..."
-nohup java -Xms1G -Xmx2G -jar "$MC_JAR" nogui > /opt/mcs.log 2>&1 &
+screen -dmS mcserver java -Xms1G -Xmx2G -jar "$MC_JAR" nogui
 
-MC_PID=$!
-echo "[START] MC PID = $MC_PID"
+echo "[START] Minecraft 服务端已在 screen 会话中启动"
+echo "[START] 使用 'screen -r mcserver' 进入控制台"
+echo "[START] 按 Ctrl+A 然后按 D 退出控制台但保持服务运行"
 
 # 确保 auto_shutdown.sh 可执行
 chmod +x "$AUTO_SHUTDOWN"
