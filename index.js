@@ -11,6 +11,29 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// 设置信任代理以获取真实客户端IP
+app.set('trust proxy', true);
+
+// 辅助函数：获取真实客户端IP
+function getClientIp(req) {
+  // 优先从 X-Forwarded-For 获取（适用于反向代理）
+  const forwarded = req.headers['x-forwarded-for'];
+  if (forwarded) {
+    // X-Forwarded-For 可能包含多个IP，第一个是客户端真实IP
+    return forwarded.split(',')[0].trim();
+  }
+  // 其次从 X-Real-IP 获取（某些代理使用）
+  const realIp = req.headers['x-real-ip'];
+  if (realIp) {
+    return realIp;
+  }
+  // 最后使用 req.ip
+  return req.ip || req.connection.remoteAddress || 'unknown';
+}
+
+// 使用解析JSON中间件
+app.use(express.json());
+
 // 使用cookie中间件
 app.use(cookieParser());
 
@@ -68,7 +91,7 @@ const authenticate = async (req, res, next) => {
   }
 
   const authCredentials = authHeader.substring(7);
-  const clientIp = req.ip || req.connection.remoteAddress || 'unknown';
+  const clientIp = getClientIp(req);
   const requestId = crypto.randomUUID();
 
   // 检查 IP 是否被锁定
@@ -248,12 +271,48 @@ const webAuth = (req, res, next) => {
     requestId
   };
 
-  // 记录登录日志
-  const clientIp = req.ip || req.connection.remoteAddress || 'unknown';
-  logOperation(requestId, 'WEB_LOGIN', clientIp, userId, '用户登录成功');
-
   next();
 };
+
+// 网页登录接口 - 仅在登录页面登录时调用并记录日志（避免重复记录）
+app.post('/api/web-login', async (req, res) => {
+  const { username, password } = req.body;
+  const clientIp = getClientIp(req);
+  const requestId = crypto.randomUUID();
+
+  if (!username || !password) {
+    return res.status(400).json({
+      success: false,
+      message: '用户名和密码不能为空'
+    });
+  }
+
+  // 查找匹配的用户名和密码
+  const matchedAuth = Object.entries(AUTH_PASSWORDS).find(([userId, config]) =>
+    userId === username && config.password === password
+  );
+
+  if (!matchedAuth) {
+    // 记录登录失败日志
+    await logOperation(requestId, 'WEB_LOGIN_FAILED', clientIp, username, '用户名或密码错误');
+    return res.status(401).json({
+      success: false,
+      message: '用户名或密码错误'
+    });
+  }
+
+  const [userId, authConfig] = matchedAuth;
+
+  // 记录登录成功日志（仅网页登录时记录）
+  await logOperation(requestId, 'WEB_LOGIN', clientIp, userId, '用户登录成功');
+
+  res.json({
+    success: true,
+    userId,
+    userName: authConfig.name || userId,
+    permissions: authConfig.permissions || []
+  });
+});
 
 // 通过启动模板创建实例函数
 async function runInstances(launchTemplateId, launchTemplateVersion) {
@@ -350,13 +409,13 @@ app.get('/api/run-instance', authenticate, checkPermission('run_instance'), asyn
     });
   }
 
-  await logOperation(req.auth.requestId, 'CREATE_INSTANCE', req.ip, req.auth.userId,
+  await logOperation(req.auth.requestId, 'CREATE_INSTANCE', getClientIp(req), req.auth.userId,
     `创建实例请求: TemplateID=${templateId}, Version=${templateVersion || 'DEFAULT'}`);
 
   // 检查现有实例数量
   const existingResult = await describeInstancesList();
   if (existingResult.success && existingResult.instances.length > 0) {
-    await logOperation(req.auth.requestId, 'CREATE_INSTANCE_FAILED', req.ip, req.auth.userId,
+    await logOperation(req.auth.requestId, 'CREATE_INSTANCE_FAILED', getClientIp(req), req.auth.userId,
       `创建实例失败: 已存在${existingResult.instances.length}个实例`);
     return res.status(400).json({
       success: false,
@@ -367,7 +426,7 @@ app.get('/api/run-instance', authenticate, checkPermission('run_instance'), asyn
   const result = await runInstances(templateId, templateVersion || 'DEFAULT');
 
   if (result.success) {
-    await logOperation(req.auth.requestId, 'CREATE_INSTANCE_SUCCESS', req.ip, req.auth.userId,
+    await logOperation(req.auth.requestId, 'CREATE_INSTANCE_SUCCESS', getClientIp(req), req.auth.userId,
       `实例创建成功: ${result.instanceId}`);
     res.json({
       success: true,
@@ -375,7 +434,7 @@ app.get('/api/run-instance', authenticate, checkPermission('run_instance'), asyn
       instanceId: result.instanceId
     });
   } else {
-    await logOperation(req.auth.requestId, 'CREATE_INSTANCE_ERROR', req.ip, req.auth.userId,
+    await logOperation(req.auth.requestId, 'CREATE_INSTANCE_ERROR', getClientIp(req), req.auth.userId,
       `创建实例错误: ${result.error}`);
     res.status(500).json({
       success: false,
@@ -396,12 +455,12 @@ app.get('/api/start-instance', authenticate, checkPermission('start_instance'), 
     });
   }
 
-  await logOperation(req.auth.requestId, 'START_INSTANCE', req.ip, req.auth.userId,
+  await logOperation(req.auth.requestId, 'START_INSTANCE', getClientIp(req), req.auth.userId,
     `启动实例请求: ${instanceId}`);
 
   try {
     await client.StartInstances({ InstanceIds: [instanceId] });
-    await logOperation(req.auth.requestId, 'START_INSTANCE_SUCCESS', req.ip, req.auth.userId,
+    await logOperation(req.auth.requestId, 'START_INSTANCE_SUCCESS', getClientIp(req), req.auth.userId,
       `实例 ${instanceId} 启动请求已发送`);
 
     res.json({
@@ -410,7 +469,7 @@ app.get('/api/start-instance', authenticate, checkPermission('start_instance'), 
       instanceId
     });
   } catch (error) {
-    await logOperation(req.auth.requestId, 'START_INSTANCE_ERROR', req.ip, req.auth.userId,
+    await logOperation(req.auth.requestId, 'START_INSTANCE_ERROR', getClientIp(req), req.auth.userId,
       `启动实例错误: ${error.message}`);
     res.status(500).json({
       success: false,
@@ -431,13 +490,13 @@ app.get('/api/terminate-instance', authenticate, checkPermission('terminate_inst
     });
   }
 
-  await logOperation(req.auth.requestId, 'TERMINATE_INSTANCE', req.ip, req.auth.userId,
+  await logOperation(req.auth.requestId, 'TERMINATE_INSTANCE', getClientIp(req), req.auth.userId,
     `删除实例请求: ${instanceId}`);
 
   const result = await terminateInstances([instanceId]);
 
   if (result.success) {
-    await logOperation(req.auth.requestId, 'TERMINATE_INSTANCE_SUCCESS', req.ip, req.auth.userId,
+    await logOperation(req.auth.requestId, 'TERMINATE_INSTANCE_SUCCESS', getClientIp(req), req.auth.userId,
       `实例 ${instanceId} 删除请求已发送`);
     res.json({
       success: true,
@@ -445,7 +504,7 @@ app.get('/api/terminate-instance', authenticate, checkPermission('terminate_inst
       instanceId
     });
   } else {
-    await logOperation(req.auth.requestId, 'TERMINATE_INSTANCE_ERROR', req.ip, req.auth.userId,
+    await logOperation(req.auth.requestId, 'TERMINATE_INSTANCE_ERROR', getClientIp(req), req.auth.userId,
       `删除实例错误: ${result.error}`);
     res.status(500).json({
       success: false,
@@ -497,7 +556,7 @@ app.get('/api/instances', authenticate, checkPermission('read_instance'), async 
       instances: instancesList
     });
   } else {
-    await logOperation(req.auth.requestId, 'LIST_INSTANCES_ERROR', req.ip, req.auth.userId,
+    await logOperation(req.auth.requestId, 'LIST_INSTANCES_ERROR', getClientIp(req), req.auth.userId,
       `获取实例列表错误: ${result.error}`);
     res.status(500).json({
       success: false,

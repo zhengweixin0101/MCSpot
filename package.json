@@ -1,6 +1,6 @@
 {
   "name": "mcsg-tencent-cloud-api",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "基于腾讯云API的Minecraft服务器快速启动工具",
   "main": "index.js",
   "scripts": {

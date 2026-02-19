@@ -433,10 +433,10 @@
                     <% if (user.permissions.includes('start_instance')) { %>
                     <button id="btn-start" class="btn btn-success" onclick="startServer()" style="display: none;">启动服务器</button>
                     <% } %>
-                    <% if (user.permissions.includes('terminate_instance')) { %>
+                    <button class="btn btn-warning" onclick="refreshStatus()">刷新状态</button>
+                    <% if (user.permissions.includes('terminate_instance') || user.permissions.includes('admin')) { %>
                     <button id="btn-stop" class="btn btn-danger" onclick="terminateServer()">删除服务器</button>
                     <% } %>
-                    <button class="btn btn-warning" onclick="refreshStatus()">刷新状态</button>
                 </div>
             </div>
         </div>

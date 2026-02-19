@@ -278,12 +278,13 @@
             setLoading(true);
 
             try {
-                const response = await fetch('/api/user-info', {
-                    method: 'GET',
+                // 调用专门的网页登录接口
+                const response = await fetch('/api/web-login', {
+                    method: 'POST',
                     headers: {
-                        'Authorization': 'Bearer ' + username + ':' + password,
                         'Content-Type': 'application/json'
-                    }
+                    },
+                    body: JSON.stringify({ username, password })
                 });
 
                 const data = await response.json();
