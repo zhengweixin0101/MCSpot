@@ -147,6 +147,9 @@ const authenticate = async (req, res, next) => {
 
 // 记录操作日志到 Redis
 async function logOperation(requestId, operation, clientIp, userId, details) {
+  // 先输出到控制台
+  console.log(`[AUTH_LOG] ${operation} | User: ${userId} | IP: ${clientIp} | ${details}`);
+
   try {
     const logData = {
       requestId,
@@ -157,19 +160,11 @@ async function logOperation(requestId, operation, clientIp, userId, details) {
       timestamp: new Date().toISOString()
     };
 
-    // 存储到 Redis 列表（保留最近1000条日志）
+    // 存储到 Redis 列表（保留最近500条日志）
     await redisClient.lPush('auth:logs', JSON.stringify(logData));
-    await redisClient.lTrim('auth:logs', 0, 999);
-
-    // 为每个用户单独记录日志（保留最近100条）
-    if (userId !== 'unknown') {
-      await redisClient.lPush(`auth:user:${userId}:logs`, JSON.stringify(logData));
-      await redisClient.lTrim(`auth:user:${userId}:logs`, 0, 99);
-    }
-
-    console.log(`[AUTH_LOG] ${operation} | User: ${userId} | IP: ${clientIp} | ${details}`);
+    await redisClient.lTrim('auth:logs', 0, 499);
   } catch (err) {
-    console.error('记录日志失败:', err);
+    console.error('记录日志到 Redis 失败:', err);
   }
 }
 
@@ -245,12 +240,17 @@ const webAuth = (req, res, next) => {
   const [userId, authConfig] = matchedAuth;
 
   // 将用户信息附加到请求对象
+  const requestId = crypto.randomUUID();
   req.auth = {
     userId,
     userName: userId,
     permissions: authConfig.permissions || [],
-    requestId: crypto.randomUUID()
+    requestId
   };
+
+  // 记录登录日志
+  const clientIp = req.ip || req.connection.remoteAddress || 'unknown';
+  logOperation(requestId, 'WEB_LOGIN', clientIp, userId, '用户登录成功');
 
   next();
 };
@@ -457,15 +457,9 @@ app.get('/api/terminate-instance', authenticate, checkPermission('terminate_inst
 
 // GET 请求接口 - 获取实例列表
 app.get('/api/instances', authenticate, checkPermission('read_instance'), async (req, res) => {
-  await logOperation(req.auth.requestId, 'LIST_INSTANCES', req.ip, req.auth.userId,
-    '获取实例列表请求');
-
   const result = await describeInstancesList();
 
   if (result.success) {
-    await logOperation(req.auth.requestId, 'LIST_INSTANCES_SUCCESS', req.ip, req.auth.userId,
-      `查询到 ${result.instances.length} 个实例`);
-
     const instancesList = result.instances.map(instance => {
       // 尝试多种路径获取公网IP
       let publicIp = null;
@@ -515,16 +509,10 @@ app.get('/api/instances', authenticate, checkPermission('read_instance'), async 
 
 // 获取操作日志接口（需要 admin 权限）
 app.get('/api/auth-logs', authenticate, checkPermission('admin'), async (req, res) => {
-  const { userId, limit = 50 } = req.query;
+  const { limit = 500 } = req.query;
 
   try {
-    let logs;
-    if (userId) {
-      logs = await redisClient.lRange(`auth:user:${userId}:logs`, 0, parseInt(limit) - 1);
-    } else {
-      logs = await redisClient.lRange('auth:logs', 0, parseInt(limit) - 1);
-    }
-
+    const logs = await redisClient.lRange('auth:logs', 0, parseInt(limit) - 1);
     const parsedLogs = logs.map(log => JSON.parse(log));
 
     res.json({

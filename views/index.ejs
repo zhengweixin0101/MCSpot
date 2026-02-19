@@ -655,13 +655,14 @@
 
                 if (data.success && data.logs) {
                     const container = document.getElementById('logs-container');
-                    let html = '<table class="logs-table"><thead><tr><th>时间</th><th>操作</th><th>用户</th><th>详情</th></tr></thead><tbody>';
+                    let html = '<table class="logs-table"><thead><tr><th>时间</th><th>操作</th><th>用户</th><th>IP</th><th>详情</th></tr></thead><tbody>';
                     data.logs.forEach(log => {
                         const opClass = log.operation.includes('SUCCESS') ? 'success' : (log.operation.includes('ERROR') ? 'error' : 'warning');
                         html += `<tr>
                             <td>${new Date(log.timestamp).toLocaleString('zh-CN')}</td>
                             <td><span class="log-operation ${opClass}">${log.operation}</span></td>
                             <td>${log.userId}</td>
+                            <td>${log.clientIp}</td>
                             <td>${log.details}</td>
                         </tr>`;
                     });
