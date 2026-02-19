@@ -25,8 +25,7 @@ mkdir -p "$MCS_DIR"
 cd "$MCS_DIR"
 
 echo "[START] 从 S3 下载 world.zip ..."
-aws s3 cp "s3://$S3_BUCKET/mc/world.zip" world.zip \
-  --endpoint-url "$S3_ENDPOINT"
+aws s3 cp "s3://$S3_BUCKET/mc/world.zip" world.zip --endpoint-url "$S3_ENDPOINT"
 
 echo "[START] 清理旧的 world 文件夹..."
 rm -rf world
