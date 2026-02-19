@@ -5,13 +5,15 @@ ENDPOINT="https://3e074a499835faf39e26a69ca96198e9.r2.cloudflarestorage.com"
 BUCKET="cdn"
 API_BASE="https://mcsg.zhengweixin.top"
 AUTH_CREDENTIALS="zhengweixin0101@outlook.com:Zwx-0101"
+INSTANCE_DELETED=false
 
 # 删除实例函数
 terminate_instance() {
-    if [ -n "$INSTANCE_ID" ]; then
+    if [ -n "$INSTANCE_ID" ] && [ "$INSTANCE_DELETED" = false ]; then
         echo "[AUTO] 删除实例 $INSTANCE_ID..."
         curl -s -H "Authorization: Bearer $AUTH_CREDENTIALS" "$API_BASE/api/terminate-instance?instanceId=$INSTANCE_ID"
         echo "[AUTO] 实例删除请求已发送"
+        INSTANCE_DELETED=true
     fi
 }
 
