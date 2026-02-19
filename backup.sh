@@ -4,7 +4,7 @@ MCS_DIR="/opt/mcs"
 ENDPOINT="https://3e074a499835faf39e26a69ca96198e9.r2.cloudflarestorage.com"
 BUCKET="cdn"
 
-echo "[BACKUP] 开始紧急备份..."
+echo "[BACKUP] 开始备份..."
 
 # 检查目录是否存在
 if [ ! -d "$MCS_DIR/world" ]; then

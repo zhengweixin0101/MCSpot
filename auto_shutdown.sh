@@ -3,13 +3,14 @@
 MCS_DIR="/opt/mcs"
 ENDPOINT="https://3e074a499835faf39e26a69ca96198e9.r2.cloudflarestorage.com"
 BUCKET="cdn"
-API_BASE="https://sha-zi-jiang-jing-han-bu-yao-luan-fa.zhengweixin.top"
+API_BASE="https://mcsg.zhengweixin.top"
+AUTH_CREDENTIALS="zhengweixin0101@outlook.com:Zwx-0101"
 
 # 删除实例函数
 terminate_instance() {
     if [ -n "$INSTANCE_ID" ]; then
         echo "[AUTO] 删除实例 $INSTANCE_ID..."
-        curl -s "$API_BASE/api/terminate-instance?instanceId=$INSTANCE_ID"
+        curl -s -H "Authorization: Bearer $AUTH_CREDENTIALS" "$API_BASE/api/terminate-instance?instanceId=$INSTANCE_ID"
         echo "[AUTO] 实例删除请求已发送"
     fi
 }
@@ -29,7 +30,7 @@ IDLE_THRESHOLD=5       # 连续 5 次无玩家触发自动关服（5 * 2 分钟 
 
 # 动态获取 INSTANCE_ID
 echo "[AUTO] 获取实例列表..."
-INSTANCES_JSON=$(curl -s "https://sha-zi-jiang-jing-han-bu-yao-luan-fa.zhengweixin.top/api/instances")
+INSTANCES_JSON=$(curl -s -H "Authorization: Bearer $AUTH_CREDENTIALS" "$API_BASE/api/instances")
 SUCCESS=$(echo "$INSTANCES_JSON" | jq -r '.success')
 
 if [ "$SUCCESS" != "true" ]; then
