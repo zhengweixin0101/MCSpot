@@ -21,9 +21,9 @@ BACKUP_FILE="world_backup_${DATETIME}.zip"
 
 echo "[BACKUP] 备份文件名: $BACKUP_FILE"
 
-# 压缩世界数据
-echo "[BACKUP] 正在压缩 world 目录..."
-zip -r "$BACKUP_FILE" world
+# 压缩世界数据和配置文件
+echo "[BACKUP] 正在压缩 world 目录和配置文件..."
+zip -r "$BACKUP_FILE" world server.properties eula.txt ops.json whitelist.json banned-players.json banned-ips.json usercache.json 2>/dev/null || true
 
 if [ $? -ne 0 ]; then
     echo "[BACKUP] 压缩失败！"
