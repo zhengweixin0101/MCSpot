@@ -1,8 +1,15 @@
 #!/bin/bash
+set -e
 
-MCS_DIR="/opt/mcs"
-ENDPOINT="https://3e074a499835faf39e26a69ca96198e9.r2.cloudflarestorage.com"
-BUCKET="cdn"
+# 加载配置文件
+CONFIG_FILE="/opt/.env"
+if [ -f "$CONFIG_FILE" ]; then
+    source "$CONFIG_FILE"
+fi
+
+MCS_DIR="${MCS_DIR}" # Minecraft 服务端目录
+S3_ENDPOINT="${S3_ENDPOINT}" # S3 兼容存储服务 URL
+S3_BUCKET="${S3_BUCKET}" # S3 存储桶名称
 
 echo "[BACKUP] 开始备份..."
 
@@ -34,7 +41,7 @@ echo "[BACKUP] 压缩完成，文件大小: $(du -h "$BACKUP_FILE" | cut -f1)"
 
 # 上传到 S3
 echo "[BACKUP] 正在上传到 S3..."
-aws s3 cp "$BACKUP_FILE" "s3://$BUCKET/mc/$BACKUP_FILE" --endpoint-url "$ENDPOINT"
+aws s3 cp "$BACKUP_FILE" "s3://$S3_BUCKET/mc/$BACKUP_FILE" --endpoint-url "$S3_ENDPOINT"
 
 if [ $? -eq 0 ]; then
     echo "[BACKUP] ✓ 备份成功！$BACKUP_FILE 已上传到 S3"

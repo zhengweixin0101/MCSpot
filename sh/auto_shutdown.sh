@@ -1,10 +1,18 @@
 #!/bin/bash
 
-MCS_DIR="/opt/mcs"
-ENDPOINT="https://3e074a499835faf39e26a69ca96198e9.r2.cloudflarestorage.com"
-BUCKET="cdn"
-API_BASE="https://mcsg.zhengweixin.top"
-AUTH_CREDENTIALS="zhengweixin0101@outlook.com:Zwx-0101"
+# 加载配置文件
+CONFIG_FILE="/opt/.env"
+if [ -f "$CONFIG_FILE" ]; then
+    source "$CONFIG_FILE"
+fi
+
+MCS_DIR="${MCS_DIR}" # Minecraft 服务端目录
+MC_JAR="${MC_JAR}" # Minecraft 服务端 JAR 文件名
+MC_JAR_PATH="$MCS_DIR/$MC_JAR" # JAR 文件完整路径
+S3_ENDPOINT="${S3_ENDPOINT}" # S3 兼容存储服务 URL
+S3_BUCKET="${S3_BUCKET}" # S3 存储桶名称
+API_BASE="${API_BASE}" # API 基础 URL
+AUTH_CREDENTIALS="${AUTH_CREDENTIALS}" # 认证信息
 INSTANCE_DELETED=false
 
 # 删除实例函数
@@ -85,20 +93,20 @@ while true; do
     if [ "$IDLE_COUNT" -ge "$IDLE_THRESHOLD" ]; then
         echo "[AUTO] 连续 $IDLE_COUNT 次检测无玩家（共 $((IDLE_COUNT*2)) 分钟），开始自动关服..."
 
-    # 关闭 Minecraft 服务端
-    MC_PID=$(pgrep -f "/opt/mcs/1.21.11-server.jar")
-    if [ -n "$MC_PID" ]; then
-        echo "[AUTO] 关闭 Minecraft 服务端 PID=$MC_PID"
-        kill $MC_PID
-        # 等待进程完全退出
-        sleep 5
-        if ps -p $MC_PID > /dev/null; then
-            echo "[AUTO] 强制杀掉未退出的服务端"
-            kill -9 $MC_PID
+        # 关闭 Minecraft 服务端
+        MC_PID=$(pgrep -f "$MC_JAR_PATH")
+        if [ -n "$MC_PID" ]; then
+            echo "[AUTO] 关闭 Minecraft 服务端 PID=$MC_PID"
+            kill "$MC_PID"
+            # 等待进程完全退出
+            sleep 5
+            if ps -p "$MC_PID" > /dev/null 2>&1; then
+                echo "[AUTO] 强制杀掉未退出的服务端"
+                kill -9 "$MC_PID"
+            fi
+        else
+            echo "[AUTO] 未找到 Minecraft 服务端进程"
         fi
-    else
-        echo "[AUTO] 未找到 Minecraft 服务端进程"
-    fi
         sleep 5
 
         # 备份世界和配置文件
@@ -107,7 +115,7 @@ while true; do
         zip -r world.zip world server.properties eula.txt ops.json whitelist.json banned-players.json banned-ips.json usercache.json 2>/dev/null || true
 
         # 上传到 S3
-        aws s3 cp world.zip "s3://$BUCKET/mc/world.zip" --endpoint-url "$ENDPOINT"
+        aws s3 cp world.zip "s3://$S3_BUCKET/mc/world.zip" --endpoint-url "$S3_ENDPOINT"
         echo "[AUTO] world.zip 上传完成"
 
         # 调用 API 删除实例
@@ -116,7 +124,3 @@ while true; do
         exit 0
     fi
 done
-
-# 正常退出时取消 trap
-trap - EXIT
-trap - ERR
