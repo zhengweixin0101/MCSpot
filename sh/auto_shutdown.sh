@@ -98,12 +98,12 @@ while true; do
         MC_PID=$(pgrep -f "$MC_JAR_PATH")
         if [ -n "$MC_PID" ]; then
             echo "[AUTO] 关闭 Minecraft 服务端 PID=$MC_PID"
-            kill "$MC_PID"
+            echo "$MC_PID" | xargs kill
             # 等待进程完全退出
             sleep 5
-            if ps -p "$MC_PID" > /dev/null 2>&1; then
+            if pgrep -f "$MC_JAR_PATH" > /dev/null 2>&1; then
                 echo "[AUTO] 强制杀掉未退出的服务端"
-                kill -9 "$MC_PID"
+                echo "$MC_PID" | xargs kill -9
             fi
         else
             echo "[AUTO] 未找到 Minecraft 服务端进程"
