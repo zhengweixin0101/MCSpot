@@ -1,7 +1,7 @@
 {
-  "name": "mcsg-tencent-cloud-api",
-  "version": "2.1.1",
-  "description": "基于腾讯云API的Minecraft服务器快速启动工具",
+  "name": "mcspot",
+  "version": "3.0.0",
+  "description": "基于腾讯云 API 的 Minecraft 服务器按需启动工具",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",

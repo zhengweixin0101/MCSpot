@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>登录 - MCSG based on Tencent Cloud</title>
+    <title>登录 - MCSpot</title>
     <style>
         * {
             margin: 0;
@@ -71,11 +71,6 @@
             color: #2d3748;
             font-size: 2.2em;
             margin-bottom: 10px;
-        }
-
-        .logo p {
-            color: #666;
-            font-size: 1em;
         }
 
         .form-group {
@@ -177,8 +172,20 @@
             margin-top: 30px;
             padding-top: 20px;
             border-top: 1px solid #e2e8f0;
-            color: #666;
+            color: #718096;
             font-size: 0.85em;
+            line-height: 1.6;
+        }
+
+        .footer a {
+            color: #4a5568;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .footer a:hover {
+            color: #2d3748;
+            text-decoration: underline;
         }
 
         .loader {
@@ -207,8 +214,7 @@
 <body>
     <div class="login-container">
         <div class="logo">
-            <h1>🎮MCSG</h1>
-            <p>基于腾讯云API的Minecraft服务器快速启动工具</p>
+            <h1>登录 MCSpot</h1>
         </div>
 
         <div class="info-message">
@@ -253,7 +259,8 @@
         </form>
 
         <div class="footer">
-            <p>MCSG based on Tencent Cloud | © by ShinX.</p>
+            <p>MCSpot - 基于腾讯云的 Minecraft 服务器按需启动工具</p>
+            <p style="margin-top: 5px; color: #a0aec0;">© <span id="current-year"></span> ShinX. All rights reserved.</p>
         </div>
     </div>
 
@@ -331,6 +338,9 @@
 
         // 页面加载时检查是否已登录
         window.addEventListener('load', () => {
+            // 设置当前年份
+            document.getElementById('current-year').textContent = new Date().getFullYear();
+
             const cookies = document.cookie.split('; ');
             const hasUsername = cookies.some(c => c.startsWith('auth_username='));
             const hasPassword = cookies.some(c => c.startsWith('auth_password='));

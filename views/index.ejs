@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>控制台 - MCSG based on Tencent Cloud</title>
+    <title>控制台 - MCSpot</title>
     <style>
         * {
             margin: 0;
@@ -57,6 +57,23 @@
         .logo h1 {
             color: #2d3748;
             font-size: 1.5em;
+        }
+
+        .docs-link {
+            color: #4a5568;
+            text-decoration: none;
+            font-size: 0.95em;
+            font-weight: 500;
+            padding: 6px 12px;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+            background: transparent;
+        }
+
+        .docs-link:hover {
+            color: #2d3748;
+            background: #e6e6e6;
+            text-decoration: none;
         }
 
         .card {
@@ -618,9 +635,31 @@
 
         .footer {
             text-align: center;
-            color: #666;
+            color: #718096;
             padding: 20px;
             font-size: 0.9em;
+            line-height: 1.6;
+        }
+
+        .footer a {
+            color: #4a5568;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .footer a:hover {
+            color: #2d3748;
+            text-decoration: none;
+        }
+
+        .footer-links {
+            margin-top: 10px;
+        }
+
+        .footer-links a {
+            margin: 0 10px;
+            font-size: 0.85em;
+            color: #a0aec0;
         }
     </style>
 </head>
@@ -630,6 +669,7 @@
             <div class="logo">
                 <h1>🎮 控制台</h1>
             </div>
+            <a href="/docs" class="docs-link">API 文档</a>
         </div>
 
         <div class="card">
@@ -761,18 +801,23 @@
         </div>
         <% } %>
 
-        <div class="card" id="docs-card">
-            <h2 class="section-title">API文档</h2>
-            <p style="margin-bottom: 15px;">查看完整的API接口文档和说明</p>
-            <button class="btn btn-primary" onclick="window.location.href='/docs'">查看文档</button>
-        </div>
-
         <div class="footer">
-            <p>MCSG based on Tencent Cloud | © by ShinX.</p>
+            <p>MCSpot - 基于腾讯云 API 的 Minecraft 服务器按需启动工具</p>
+            <p style="margin-top: 8px; color: #a0aec0; font-size: 0.875rem;">
+                © <span id="current-year"></span> <a href="https://zhengweixin.top" target="_blank" rel="noopener" style="color: #a0aec0; text-decoration: underline;">ShinX</a>. All rights reserved.
+            </p>
+            <div class="footer-links">
+                <a href="/docs">API 文档</a>
+                <a href="https://zhengweixin.top" target="_blank" rel="noopener">My Blog</a>
+                <a href="https://github.com/zhengweixin0101/MCSpot" target="_blank" rel="noopener">GitHub</a>
+            </div>
         </div>
     </div>
 
     <script>
+        // 设置当前年份
+        document.getElementById('current-year').textContent = new Date().getFullYear();
+
         // 用户权限
         const USER_PERMISSIONS = <%- JSON.stringify(user ? user.permissions : []) %>;
         // MC配置

@@ -607,7 +607,7 @@ app.get('/', (req, res) => {
 // 服务器控制台页面
 app.get('/dashboard', webAuth, (req, res) => {
   res.render('index', {
-    title: '控制台 - MCSG based on Tencent Cloud',
+    title: '控制台 - MCSpot',
     port: PORT,
     baseUrl: `http://localhost:${PORT}`,
     user: req.auth,
@@ -622,7 +622,7 @@ app.get('/dashboard', webAuth, (req, res) => {
 // API文档页面
 app.get('/docs', webAuth, (req, res) => {
   res.render('docs', {
-    title: 'API文档 - MCSG based on Tencent Cloud',
+    title: 'API文档 - MCSpot',
     port: PORT,
     baseUrl: `http://localhost:${PORT}`,
     user: req.auth
@@ -640,7 +640,7 @@ app.get('/health', (req, res) => {
 // 启动服务器
 app.listen(PORT, () => {
   console.log(`========================================`);
-  console.log(`MCSG - Minecraft服务器快速启动工具`);
+  console.log(`MCSpot - Minecraft 服务器按需启动工具`);
   console.log(`========================================`);
   console.log(`服务器运行在 http://localhost:${PORT}`);
   console.log(``);
