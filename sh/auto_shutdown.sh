@@ -14,6 +14,7 @@ S3_BUCKET="${S3_BUCKET}" # S3 存储桶名称
 API_BASE="${API_BASE}" # API 基础 URL
 AUTH_CREDENTIALS="${AUTH_CREDENTIALS}" # 认证信息
 INSTANCE_DELETED=false
+BACKUP_SUCCESS=false
 
 # 删除实例函数
 terminate_instance() {
@@ -109,17 +110,56 @@ while true; do
         fi
         sleep 5
 
+        # 验证必要的目录和变量
+        if [ -z "$MCS_DIR" ]; then
+            echo "[AUTO] 错误: MCS_DIR 变量未设置"
+            terminate_instance
+            exit 1
+        fi
+
+        if [ ! -d "$MCS_DIR" ]; then
+            echo "[AUTO] 错误: Minecraft 服务端目录不存在: $MCS_DIR"
+            terminate_instance
+            exit 1
+        fi
+
         # 备份世界和配置文件
-        cd "$MCS_DIR"
+        cd "$MCS_DIR" || {
+            echo "[AUTO] 错误: 无法进入目录 $MCS_DIR"
+            terminate_instance
+            exit 1
+        }
+        
         rm -f world.zip
-        zip -r world.zip world server.properties eula.txt ops.json whitelist.json banned-players.json banned-ips.json usercache.json 2>/dev/null || true
+        if ! zip -r world.zip world server.properties eula.txt ops.json whitelist.json banned-players.json banned-ips.json usercache.json > /dev/null 2>&1; then
+            echo "[AUTO] 错误: 备份文件压缩失败"
+            terminate_instance
+            exit 1
+        fi
+        echo "[AUTO] world.zip 压缩完成"
+
+        if [ ! -f "world.zip" ]; then
+            echo "[AUTO] 错误: world.zip 文件未生成"
+            terminate_instance
+            exit 1
+        fi
 
         # 上传到 S3
-        aws s3 cp world.zip "s3://$S3_BUCKET/mc/world.zip" --endpoint-url "$S3_ENDPOINT"
-        echo "[AUTO] world.zip 上传完成"
+        if aws s3 cp world.zip "s3://$S3_BUCKET/mc/world.zip" --endpoint-url "$S3_ENDPOINT" 2>&1 | tee -a /tmp/s3_upload.log; then
+            echo "[AUTO] world.zip 上传成功"
+            BACKUP_SUCCESS=true
+        else
+            echo "[AUTO] 错误: world.zip 上传失败"
+            echo "[AUTO] 错误详情: $(tail -5 /tmp/s3_upload.log)"
+            echo "[AUTO] 备份失败，不删除实例，脚本退出"
+            exit 1
+        fi
 
-        # 调用 API 删除实例
-        terminate_instance
+        # 上传成功，调用 API 删除实例
+        if [ "$BACKUP_SUCCESS" = true ]; then
+            echo "[AUTO] 备份成功，开始删除实例"
+            terminate_instance
+        fi
 
         exit 0
     fi
