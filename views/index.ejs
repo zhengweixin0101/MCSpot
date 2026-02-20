@@ -108,7 +108,6 @@
             background: #2d3748;
             color: white;
             border: none;
-            margin-top: 20px;
             padding: 12px 24px;
             border-radius: 8px;
             cursor: pointer;
@@ -116,6 +115,7 @@
             font-weight: 600;
             transition: all 0.3s ease;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            height: fit-content;
         }
 
         .btn-logout:hover {
@@ -174,6 +174,7 @@
                 width: 100%;
                 padding: 8px 16px;
                 font-size: 0.9em;
+                margin-top: 15px;
             }
 
             .server-status {
@@ -432,6 +433,30 @@
             to { transform: rotate(360deg); }
         }
 
+        .loading-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 300px;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #e2e8f0;
+            border-top-color: #2d3748;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .loading-text {
+            font-size: 1.1em;
+            color: #4a5568;
+            font-weight: 500;
+        }
+
         .logs-table {
             width: 100%;
             border-collapse: collapse;
@@ -523,6 +548,74 @@
             color: #856404;
         }
 
+        .mc-status-card-online .user-info-value {
+            color: #10b981;
+        }
+
+        .mc-status-card-offline .user-info-value {
+            color: #ef4444;
+        }
+
+        .mc-motd {
+            background: #f7fafc;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border-left: 4px solid #667eea;
+            color: #2d3748;
+        }
+
+        .mc-motd-label {
+            font-weight: 600;
+            color: #718096;
+            font-size: 0.9em;
+            margin-bottom: 8px;
+        }
+
+        .mc-motd-content {
+            color: #2d3748;
+            font-style: italic;
+            word-break: break-word;
+        }
+
+        .mc-players-list {
+            background: #f7fafc;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border-left: 4px solid #667eea;
+        }
+
+        .mc-players-label {
+            font-weight: 600;
+            color: #718096;
+            font-size: 0.9em;
+            margin-bottom: 10px;
+        }
+
+        .player-item {
+            background: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            margin: 6px 0;
+            color: #2d3748;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9em;
+        }
+
+        .player-name {
+            font-weight: 600;
+        }
+
+        .player-uuid {
+            color: #718096;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85em;
+            word-break: break-all;
+        }
+
         .footer {
             text-align: center;
             color: #666;
@@ -547,7 +640,12 @@
 
             <div id="message-container"></div>
 
-            <div id="no-instance" class="no-instance">
+            <div id="loading" class="loading-container">
+                <div class="loading-spinner"></div>
+                <p class="loading-text">正在加载服务器信息...</p>
+            </div>
+
+            <div id="no-instance" class="no-instance" style="display: none;">
                 <p>当前没有运行的Minecraft服务器</p>
                 <% if (user.permissions.includes('run_instance') || user.permissions.includes('admin')) { %>
                 <button class="btn btn-primary" onclick="createServer()">创建服务器</button>
@@ -558,6 +656,35 @@
                 <div class="server-status">
                     <div id="status-indicator" class="status-indicator pending"></div>
                     <span id="status-text" class="status-text">检查中...</span>
+                </div>
+
+                <div class="user-info-card" id="mc-status-container" style="display: none;">
+                    <div class="user-info-row" id="mc-online-card">
+                        <span class="user-info-label">MCS 状态</span>
+                        <span class="user-info-value" id="mc-online-status">检查中...</span>
+                    </div>
+                    <div class="user-info-row">
+                        <span class="user-info-label">在线玩家</span>
+                        <span class="user-info-value" id="mc-online-players">-</span>
+                    </div>
+                    <div class="user-info-row">
+                        <span class="user-info-label">游戏版本</span>
+                        <span class="user-info-value" id="mc-version">-</span>
+                    </div>
+                </div>
+
+                <div class="mc-motd" id="mc-motd-container" style="display: none;">
+                    <div class="mc-motd-label">服务器公告 (MOTD)</div>
+                    <div class="mc-motd-content" id="mc-motd">-</div>
+                </div>
+
+                <div class="mc-players-list" id="mc-players-container" style="display: none;">
+                    <div class="mc-players-label">在线玩家列表</div>
+                    <div id="mc-players-list"></div>
+                </div>
+
+                <div class="mc-cache-hint" style="display: none; font-size: 0.8em; color: #718096; margin-bottom: 15px; text-align: center;">
+                    <i class="info-icon">ℹ️</i> 以上信息调用第三方接口查询，数据有2分钟缓存
                 </div>
 
                 <div class="instance-info">
@@ -601,22 +728,28 @@
                     <button id="btn-stop" class="btn btn-danger" onclick="terminateServer()">删除实例</button>
                     <% } %>
                 </div>
+
+                <div id="copy-success-msg" style="display: none; margin-top: 15px; padding: 12px; background: #d1ecf1; border-left: 4px solid #17a2b8; border-radius: 8px; color: #0c5460; font-size: 0.9em; text-align: left;">
+                    复制成功！<游戏版本：<%= mcConfig.version || '未知' %>> 打开游戏 → 多人游戏 → 直接连接，输入服务器地址。
+                </div>
             </div>
         </div>
 
         <div class="card">
             <h2 class="section-title">用户信息</h2>
-            <div class="user-info-card">
-                <div class="user-info-row">
-                    <span class="user-info-label">用户名</span>
-                    <span class="user-info-value"><%= user.userName %></span>
+            <div style="display: flex; gap: 16px; flex-wrap: wrap; align-items: center;">
+                <div class="user-info-card" style="flex: 1; min-width: 200px;">
+                    <div class="user-info-row">
+                        <span class="user-info-label">用户名</span>
+                        <span class="user-info-value"><%= user.userName %></span>
+                    </div>
+                    <div class="user-info-row">
+                        <span class="user-info-label">权限</span>
+                        <span class="user-info-value"><%= user.permissions.includes('admin') ? '管理员' : '普通用户' %></span>
+                    </div>
                 </div>
-                <div class="user-info-row">
-                    <span class="user-info-label">权限</span>
-                    <span class="user-info-value"><%= user.permissions.includes('admin') ? '管理员' : '普通用户' %></span>
-                </div>
+                <button class="btn-logout" onclick="logout()">退出登录</button>
             </div>
-            <button class="btn-logout" onclick="logout()">退出登录</button>
         </div>
         
         <% if (user.permissions.includes('admin')) { %>
@@ -705,6 +838,101 @@
 
         // 轮询IP的定时器
         let ipPollingInterval = null;
+        // MC服务器状态轮询定时器
+        let mcStatusPollingInterval = null;
+
+        // 获取Minecraft服务器状态
+        async function fetchMcServerStatus(ip) {
+            if (!ip || ip === '-' || ip === '等待分配...') {
+                console.log('IP未准备好，跳过获取MC服务器状态', ip);
+                return;
+            }
+
+            const url = `https://api.mcsrvstat.us/3/${ip}:25565`;
+            console.log('正在获取MC服务器状态，URL:', url);
+
+            try {
+                const response = await fetch(url, {
+                    method: 'GET',
+                    timeout: 10000
+                });
+                const data = await response.json();
+
+                console.log('MC服务器状态响应数据:', data);
+
+                if (data) {
+                    updateMcServerStatus(data);
+                } else {
+                    console.log('获取到的数据为空');
+                }
+            } catch (error) {
+                console.error('获取MC服务器状态失败，URL:', url, '错误:', error);
+            }
+        }
+
+        // 更新Minecraft服务器状态显示
+        function updateMcServerStatus(data) {
+            const mcStatusContainer = document.getElementById('mc-status-container');
+            const mcCacheHint = document.querySelector('.mc-cache-hint');
+            if (!mcStatusContainer) return;
+
+            mcStatusContainer.style.display = 'grid';
+            if (mcCacheHint) {
+                mcCacheHint.style.display = 'block';
+            }
+
+            // 更新在线状态
+            const onlineCard = document.getElementById('mc-online-card');
+            const onlineStatus = document.getElementById('mc-online-status');
+            const onlinePlayers = document.getElementById('mc-online-players');
+
+            if (data.online) {
+                onlineCard.className = 'user-info-row mc-status-card-online';
+                onlineStatus.textContent = '在线';
+            } else {
+                onlineCard.className = 'user-info-row mc-status-card-offline';
+                onlineStatus.textContent = '离线';
+            }
+
+            // 更新玩家数
+            if (data.players) {
+                const onlineCount = data.players.online || 0;
+                const maxCount = data.players.max || 0;
+                onlinePlayers.textContent = `${onlineCount} / ${maxCount}`;
+            }
+
+            // 更新版本
+            if (data.version) {
+                document.getElementById('mc-version').textContent = data.version;
+            }
+
+            // 更新MOTD (服务器公告)
+            if (data.motd && data.motd.clean && data.motd.clean.length > 0) {
+                const motdContainer = document.getElementById('mc-motd-container');
+                const motdText = document.getElementById('mc-motd');
+                motdText.textContent = data.motd.clean.join(' ');
+                motdContainer.style.display = 'block';
+            }
+
+            // 更新玩家列表
+            if (data.players && data.players.list && data.players.list.length > 0) {
+                const playersContainer = document.getElementById('mc-players-container');
+                const playersList = document.getElementById('mc-players-list');
+                
+                let playersHtml = '';
+                data.players.list.forEach(player => {
+                    playersHtml += `<div class="player-item">
+                        <span class="player-name">${player.name}</span>
+                        <span class="player-uuid">${player.uuid}</span>
+                    </div>`;
+                });
+                
+                playersList.innerHTML = playersHtml;
+                playersContainer.style.display = 'block';
+            } else {
+                document.getElementById('mc-players-container').style.display = 'none';
+            }
+        }
 
         // 创建服务器
         async function createServer() {
@@ -791,6 +1019,9 @@
 
                 if (data.success) {
                     showMessage('服务器删除成功！', 'success');
+                    // 清理定时器
+                    if (ipPollingInterval) clearInterval(ipPollingInterval);
+                    if (mcStatusPollingInterval) clearInterval(mcStatusPollingInterval);
                     setTimeout(() => refreshStatus(), 2000);
                 } else {
                     showMessage('删除失败: ' + data.message, 'error');
@@ -812,10 +1043,13 @@
             }
 
             navigator.clipboard.writeText(serverAddress).then(() => {
-                showMessage(
-                    '复制成功！<游戏版本：' + (MC_CONFIG.version || 'Java 1.21.1') + '> 打开游戏 → 多人游戏 → 直接连接，输入服务器地址。',
-                    'success'
-                );
+                const copyMsg = document.getElementById('copy-success-msg');
+                if (copyMsg) {
+                    copyMsg.style.display = 'block';
+                    setTimeout(() => {
+                        copyMsg.style.display = 'none';
+                    }, 5000);
+                }
             }).catch(err => {
                 showMessage('复制失败: ' + err.message, 'error');
             });
@@ -855,6 +1089,7 @@
         // 刷新状态
         async function refreshStatus() {
             document.getElementById('refresh-indicator').style.display = 'inline-block';
+            const loadingDiv = document.getElementById('loading');
 
             try {
                 const response = await fetch('/api/instances', {
@@ -865,6 +1100,7 @@
                 if (data.success) {
                     const noInstanceDiv = document.getElementById('no-instance');
                     const serverInfoDiv = document.getElementById('server-info');
+                    loadingDiv.style.display = 'none';
 
                     if (data.instances.length === 0) {
                         noInstanceDiv.style.display = 'block';
@@ -872,6 +1108,10 @@
                         if (ipPollingInterval) {
                             clearInterval(ipPollingInterval);
                             ipPollingInterval = null;
+                        }
+                        if (mcStatusPollingInterval) {
+                            clearInterval(mcStatusPollingInterval);
+                            mcStatusPollingInterval = null;
                         }
                     } else if (data.instances.length === 1) {
                         const instance = data.instances[0];
@@ -929,6 +1169,16 @@
                             if (btnCopyAddress) {
                                 btnCopyAddress.style.display = 'inline-block';
                             }
+                            // 获取MC服务器实时状态
+                            fetchMcServerStatus(instance.publicIp);
+                            // 清除旧的轮询
+                            if (mcStatusPollingInterval) {
+                                clearInterval(mcStatusPollingInterval);
+                            }
+                            // 每5秒获取一次MC服务器状态
+                            mcStatusPollingInterval = setInterval(() => {
+                                fetchMcServerStatus(instance.publicIp);
+                            }, 5000);
                             // IP已分配，继续每5秒刷新所有状态
                             if (ipPollingInterval) {
                                 clearInterval(ipPollingInterval);
@@ -939,10 +1189,14 @@
                         }
                     } else {
                         showMessage('错误：存在多个实例', 'error');
+                        loadingDiv.style.display = 'none';
                     }
+                } else {
+                    loadingDiv.style.display = 'none';
                 }
             } catch (error) {
                 showMessage('获取状态失败: ' + error.message, 'error');
+                document.getElementById('loading').style.display = 'none';
             } finally {
                 document.getElementById('refresh-indicator').style.display = 'none';
             }
@@ -974,6 +1228,9 @@
         window.addEventListener('beforeunload', () => {
             if (ipPollingInterval) {
                 clearInterval(ipPollingInterval);
+            }
+            if (mcStatusPollingInterval) {
+                clearInterval(mcStatusPollingInterval);
             }
         });
     </script>
