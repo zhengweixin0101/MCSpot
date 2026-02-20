@@ -13,7 +13,7 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #f5f7fa;
             min-height: 100vh;
             padding: 20px;
         }
@@ -26,9 +26,9 @@
         .header {
             background: white;
             border-radius: 15px;
-            padding: 30px 40px;
-            margin-bottom: 30px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
         }
 
         .header-content {
@@ -38,24 +38,30 @@
         }
 
         .logo h1 {
-            color: #667eea;
-            font-size: 2.2em;
+            color: #2d3748;
+            font-size: 1.5em;
         }
 
         .btn-back {
-            background: #667eea;
+            background: #2d3748;
             color: white;
             border: none;
-            padding: 10px 20px;
+            padding: 10px;
             border-radius: 8px;
             cursor: pointer;
             text-decoration: none;
-            font-size: 1em;
-            transition: background 0.3s ease;
+            font-size: 0.9em;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .btn-back:hover {
-            background: #764ba2;
+            background: #1a202c;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
         }
 
         .section {
@@ -63,12 +69,12 @@
             border-radius: 15px;
             padding: 30px;
             margin-bottom: 30px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
         }
 
         .section h2 {
-            color: #667eea;
-            border-bottom: 2px solid #667eea;
+            color: #2d3748;
+            border-bottom: 2px solid #e2e8f0;
             padding-bottom: 10px;
             margin-bottom: 20px;
             font-size: 1.5em;
@@ -80,7 +86,7 @@
 
         .endpoint-item {
             background: #f7fafc;
-            border-left: 4px solid #667eea;
+            border-left: 4px solid #2d3748;
             padding: 20px;
             margin-bottom: 15px;
             border-radius: 5px;
@@ -88,7 +94,7 @@
 
         .endpoint-item .method {
             display: inline-block;
-            background: #667eea;
+            background: #2d3748;
             color: white;
             padding: 3px 10px;
             border-radius: 3px;
@@ -125,10 +131,66 @@
 
         .footer {
             text-align: center;
-            color: white;
+            color: #666;
             padding: 20px;
             font-size: 0.9em;
-            opacity: 0.9;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+
+            .header {
+                padding: 12px 15px;
+                margin-bottom: 15px;
+                border-radius: 12px;
+            }
+
+            .logo h1 {
+                font-size: 1.2em;
+            }
+
+            .btn-back {
+                padding: 8px;
+            }
+
+            .section {
+                padding: 20px;
+                margin-bottom: 20px;
+                border-radius: 12px;
+            }
+
+            .section h2 {
+                font-size: 1.1em;
+                margin-bottom: 15px;
+                padding-bottom: 8px;
+            }
+
+            .endpoint-item {
+                padding: 15px;
+            }
+
+            .endpoint-item .method {
+                font-size: 0.75em;
+                padding: 2px 8px;
+            }
+
+            .endpoint-item .path {
+                font-size: 0.85em;
+            }
+
+            .endpoint-item .description {
+                font-size: 0.9em;
+            }
+
+            .code-block {
+                padding: 12px;
+            }
+
+            .code-block code {
+                font-size: 0.8em;
+            }
         }
     </style>
 </head>
@@ -139,7 +201,12 @@
                 <div class="logo">
                     <h1>📚 API文档</h1>
                 </div>
-                <a href="/dashboard" class="btn-back">返回控制台</a>
+                <a href="/dashboard" class="btn-back">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M19 12H5"></path>
+                        <path d="M12 19l-7-7 7-7"></path>
+                    </svg>
+                </a>
             </div>
         </div>
 
@@ -200,24 +267,24 @@
 
         <div class="section">
             <h2>使用示例</h2>
-            <h3 style="color: #667eea; margin: 15px 0;">创建实例</h3>
+            <h3 style="color: #2d3748; margin: 15px 0;">创建实例</h3>
             <div class="code-block">
                 <code>curl -H "Authorization: Bearer admin:password" "<%= baseUrl %>/api/run-instance?templateId=lt-abc123&templateVersion=1"</code>
             </div>
 
-            <h3 style="color: #667eea; margin: 15px 0;">获取实例列表</h3>
+            <h3 style="color: #2d3748; margin: 15px 0;">获取实例列表</h3>
             <div class="code-block">
                 <code>curl -H "Authorization: Bearer admin:password" "<%= baseUrl %>/api/instances"</code>
             </div>
 
-            <h3 style="color: #667eea; margin: 15px 0;">获取操作日志</h3>
+            <h3 style="color: #2d3748; margin: 15px 0;">获取操作日志</h3>
             <div class="code-block">
                 <code>curl -H "Authorization: Bearer admin:password" "<%= baseUrl %>/api/auth-logs?limit=10"</code>
             </div>
         </div>
 
         <div class="footer">
-            <p>MCSG-Tencent-Cloud-API | API文档</p>
+            <p>MCSG based on Tencent Cloud | © by ShinX.</p>
         </div>
     </div>
 </body>

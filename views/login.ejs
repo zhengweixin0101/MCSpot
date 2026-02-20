@@ -13,7 +13,7 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #f5f7fa;
             min-height: 100vh;
             display: flex;
             align-items: center;
@@ -25,7 +25,7 @@
             background: white;
             border-radius: 15px;
             padding: 50px 40px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
             width: 100%;
             max-width: 450px;
             animation: fadeIn 0.5s ease;
@@ -48,7 +48,7 @@
         }
 
         .logo h1 {
-            color: #667eea;
+            color: #2d3748;
             font-size: 2.2em;
             margin-bottom: 10px;
         }
@@ -82,8 +82,8 @@
 
         .form-group input:focus {
             outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            border-color: #2d3748;
+            box-shadow: 0 0 0 3px rgba(45, 55, 72, 0.1);
         }
 
         .form-group input.error {
@@ -93,7 +93,7 @@
         .btn-login {
             width: 100%;
             padding: 14px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #2d3748;
             color: white;
             border: none;
             border-radius: 8px;
@@ -101,12 +101,13 @@
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
         .btn-login:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+            background: #1a202c;
         }
 
         .btn-login:active {
@@ -319,13 +320,6 @@
             }
         });
 
-        // 支持回车键登录
-        document.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                document.getElementById('login-form').dispatchEvent(new Event('submit'));
-            }
-        });
     </script>
 </body>
 </html>

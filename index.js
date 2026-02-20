@@ -613,7 +613,8 @@ app.get('/dashboard', webAuth, (req, res) => {
     user: req.auth,
     mcConfig: {
       launchTemplateId: process.env.MC_LAUNCH_TEMPLATE_ID,
-      port: process.env.MC_PORT || 25565
+      port: process.env.MC_PORT || 25565,
+      version: process.env.MC_VERSION || '未设置'
     }
   });
 });

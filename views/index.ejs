@@ -11,9 +11,29 @@
             box-sizing: border-box;
         }
 
+        /* 全局细滚动条样式 */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e0;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a0aec0;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #f5f7fa;
             min-height: 100vh;
             padding: 20px;
         }
@@ -26,69 +46,17 @@
         .header {
             background: white;
             border-radius: 15px;
-            padding: 30px 40px;
-            margin-bottom: 30px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-
-        .header-content {
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
 
-        .logo {
-            flex: 1;
-        }
-
         .logo h1 {
-            color: #667eea;
-            font-size: 2.2em;
-            margin-bottom: 10px;
-        }
-
-        .logo p {
-            color: #666;
-            font-size: 1em;
-        }
-
-        .user-info {
-            text-align: right;
-            margin-left: 30px;
-        }
-
-        .user-badge {
-            background: #f7fafc;
-            padding: 10px 15px;
-            border-radius: 8px;
-            margin-bottom: 10px;
-        }
-
-        .user-badge span {
-            margin: 0 5px;
-        }
-
-        .permission-badge {
-            background: #667eea;
-            color: white;
-            padding: 2px 10px;
-            border-radius: 12px;
-            font-size: 0.8em;
-        }
-
-        .btn-logout {
-            background: #e53e3e;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 0.9em;
-            transition: background 0.3s ease;
-        }
-
-        .btn-logout:hover {
-            background: #c53030;
+            color: #2d3748;
+            font-size: 1.5em;
         }
 
         .card {
@@ -96,15 +64,151 @@
             border-radius: 15px;
             padding: 30px;
             margin-bottom: 30px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .user-info-card {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+        }
+
+        .user-info-row {
+            background: white;
+            border: 2px solid #e2e8f0;
+            padding: 16px;
+            border-radius: 12px;
+            color: #2d3748;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+        }
+
+        .user-info-row:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            border-color: #cbd5e0;
+        }
+
+        .user-info-label {
+            font-size: 0.85em;
+            color: #718096;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .user-info-value {
+            font-size: 1.15em;
+            font-weight: 700;
+            word-break: break-word;
+            color: #2d3748;
+        }
+
+        .btn-logout {
+            background: #2d3748;
+            color: white;
+            border: none;
+            margin-top: 20px;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-logout:hover {
+            background: #1a202c;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
         }
 
         .section-title {
-            color: #667eea;
-            border-bottom: 2px solid #667eea;
+            color: #2d3748;
+            border-bottom: 2px solid #e2e8f0;
             padding-bottom: 10px;
             margin-bottom: 20px;
-            font-size: 1.5em;
+            font-size: 1.25em;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+
+            .logo h1 {
+                font-size: 1.2em;
+            }
+
+            .card {
+                padding: 20px;
+                margin-bottom: 20px;
+                border-radius: 12px;
+            }
+
+            .section-title {
+                font-size: 1.1em;
+                margin-bottom: 15px;
+                padding-bottom: 8px;
+            }
+
+            .user-info-card {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+
+            .user-info-row {
+                padding: 12px 14px;
+            }
+
+            .user-info-label {
+                font-size: 0.8em;
+            }
+
+            .user-info-value {
+                font-size: 1em;
+            }
+
+            .btn-logout {
+                width: 100%;
+                padding: 8px 16px;
+                font-size: 0.9em;
+            }
+
+            .server-status {
+                gap: 12px;
+                margin-bottom: 15px;
+            }
+
+            .status-text {
+                font-size: 1.1em;
+            }
+
+            .instance-info {
+                padding: 15px;
+                border-radius: 8px;
+                margin-top: 15px;
+            }
+
+            .info-row {
+                padding: 10px 0;
+            }
+
+            .info-label {
+                font-size: 0.9em;
+            }
+
+            .info-value {
+                font-size: 0.85em;
+                padding: 3px 8px;
+            }
+
+            .actions {
+                gap: 8px;
+            }
+
+
         }
 
         .server-status {
@@ -156,7 +260,7 @@
             display: flex;
             justify-content: space-between;
             padding: 12px 0;
-            border-bottom:1px solid #e2e8f0;
+            border-bottom: 1px solid #e2e8f0;
         }
 
         .info-row:last-child {
@@ -177,7 +281,7 @@
         }
 
         .info-value.highlight {
-            color: #667eea;
+            color: #2d3748;
             font-weight: bold;
         }
 
@@ -186,6 +290,11 @@
             display: flex;
             gap: 10px;
             flex-wrap: wrap;
+            justify-content: space-between;
+        }
+
+        .actions .btn-danger {
+            margin-left: auto;
         }
 
         .btn {
@@ -211,13 +320,11 @@
             box-shadow: none;
         }
 
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-
-        .btn-success {
-            background: #10b981;
+        .btn-primary,
+        .btn-success,
+        .btn-warning,
+        .btn-secondary {
+            background: #2d3748;
             color: white;
         }
 
@@ -226,14 +333,22 @@
             color: white;
         }
 
-        .btn-warning {
-            background: #f59e0b;
-            color: white;
+        .btn-primary:hover,
+        .btn-success:hover,
+        .btn-warning:hover,
+        .btn-secondary:hover {
+            background: #1a202c;
         }
 
-        .btn-secondary {
-            background: #4a5568;
-            color: white;
+        .btn-danger:hover {
+            background: #c53030;
+        }
+
+        @media (max-width: 768px) {
+            .btn {
+                padding: 10px 16px;
+                font-size: 0.9em;
+            }
         }
 
         .message {
@@ -287,11 +402,25 @@
             margin-bottom: 30px;
         }
 
+        @media (max-width: 768px) {
+            .no-instance {
+                padding: 40px 15px;
+            }
+
+            .no-instance .icon {
+                font-size: 3em;
+            }
+
+            .no-instance p {
+                font-size: 1em;
+            }
+        }
+
         .refresh-indicator {
             display: inline-block;
             width: 16px;
             height: 16px;
-            border: 2px solid #667eea;
+            border: 2px solid #2d3748;
             border-top-color: transparent;
             border-radius: 50%;
             animation: spin 1s linear infinite;
@@ -307,6 +436,13 @@
             width: 100%;
             border-collapse: collapse;
             margin-top: 15px;
+            overflow-x: auto;
+            display: block;
+        }
+
+        .logs-table-wrapper {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
         }
 
         .logs-table th,
@@ -314,6 +450,8 @@
             padding: 12px;
             text-align: left;
             border-bottom: 1px solid #e2e8f0;
+            white-space: nowrap;
+            min-width: 100px;
         }
 
         .logs-table th {
@@ -324,6 +462,42 @@
 
         .logs-table tr:hover {
             background: #f7fafc;
+        }
+
+        .logs-table th:first-child,
+        .logs-table td:first-child {
+            min-width: 160px;
+        }
+
+        .logs-table th:nth-child(2),
+        .logs-table td:nth-child(2) {
+            min-width: 140px;
+        }
+
+        .logs-table th:nth-child(3),
+        .logs-table td:nth-child(3) {
+            min-width: 100px;
+        }
+
+        .logs-table th:nth-child(4),
+        .logs-table td:nth-child(4) {
+            min-width: 120px;
+        }
+
+        .logs-table th:nth-child(5),
+        .logs-table td:nth-child(5) {
+            min-width: 200px;
+        }
+
+        @media (max-width: 768px) {
+            .logs-table-wrapper {
+                border-radius: 8px;
+                border: 1px solid #e2e8f0;
+            }
+
+            .logs-table {
+                display: table;
+            }
         }
 
         .log-operation {
@@ -351,28 +525,17 @@
 
         .footer {
             text-align: center;
-            color: white;
+            color: #666;
             padding: 20px;
             font-size: 0.9em;
-            opacity: 0.9;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <div class="header-content">
-                <div class="logo">
-                    <h1>🎮 MCSG based on Tencent Cloud</h1>
-                    <p>基于腾讯云API的Minecraft服务器快速启动工具</p>
-                </div>
-                <div class="user-info">
-                    <div class="user-badge">
-                        <span>👤 <%= user.userName %></span>
-                        <span class="permission-badge"><%= user.permissions.includes('admin') ? '管理员' : '普通用户' %></span>
-                    </div>
-                    <button class="btn-logout" onclick="logout()">退出登录</button>
-                </div>
+            <div class="logo">
+                <h1>🎮 控制台</h1>
             </div>
         </div>
 
@@ -415,7 +578,7 @@
                         <span class="info-value" id="private-ip">-</span>
                     </div>
                     <div class="info-row">
-                        <span class="info-label">MC服务器端口</span>
+                        <span class="info-label">MC游戏端口</span>
                         <span class="info-value highlight">25565</span>
                     </div>
                     <div class="info-row">
@@ -429,18 +592,33 @@
                 </div>
 
                 <div class="actions">
+                    <button class="btn btn-warning" onclick="refreshStatus()">刷新状态</button>
                     <button id="btn-copy-address" class="btn btn-primary" onclick="copyServerAddress()" style="display: none;">复制服务器地址</button>
                     <% if (user.permissions.includes('start_instance')) { %>
                     <button id="btn-start" class="btn btn-success" onclick="startServer()" style="display: none;">启动服务器</button>
                     <% } %>
-                    <button class="btn btn-warning" onclick="refreshStatus()">刷新状态</button>
                     <% if (user.permissions.includes('terminate_instance') || user.permissions.includes('admin')) { %>
-                    <button id="btn-stop" class="btn btn-danger" onclick="terminateServer()">删除服务器</button>
+                    <button id="btn-stop" class="btn btn-danger" onclick="terminateServer()">删除实例</button>
                     <% } %>
                 </div>
             </div>
         </div>
 
+        <div class="card">
+            <h2 class="section-title">用户信息</h2>
+            <div class="user-info-card">
+                <div class="user-info-row">
+                    <span class="user-info-label">用户名</span>
+                    <span class="user-info-value"><%= user.userName %></span>
+                </div>
+                <div class="user-info-row">
+                    <span class="user-info-label">权限</span>
+                    <span class="user-info-value"><%= user.permissions.includes('admin') ? '管理员' : '普通用户' %></span>
+                </div>
+            </div>
+            <button class="btn-logout" onclick="logout()">退出登录</button>
+        </div>
+        
         <% if (user.permissions.includes('admin')) { %>
         <div class="card" id="logs-card">
             <h2 class="section-title">操作日志</h2>
@@ -453,11 +631,11 @@
         <div class="card" id="docs-card">
             <h2 class="section-title">API文档</h2>
             <p style="margin-bottom: 15px;">查看完整的API接口文档和说明</p>
-            <button class="btn btn-secondary" onclick="window.location.href='/docs'">查看文档</button>
+            <button class="btn btn-primary" onclick="window.location.href='/docs'">查看文档</button>
         </div>
 
         <div class="footer">
-            <p>MCSG-Tencent-Cloud-API | Minecraft服务器快速启动工具</p>
+            <p>MCSG based on Tencent Cloud | © by ShinX.</p>
         </div>
     </div>
 
@@ -596,7 +774,7 @@
 
         // 删除服务器
         async function terminateServer() {
-            if (!confirm('确定要删除服务器吗？手动删除无法自动备份，此操作不可恢复！')) {
+            if (!confirm('确定要删除实例吗？手动删除无法自动备份，此操作不可恢复！')) {
                 return;
             }
 
@@ -635,7 +813,7 @@
 
             navigator.clipboard.writeText(serverAddress).then(() => {
                 showMessage(
-                    '复制成功！<游戏版本：Java 1.21.1> 打开游戏 → 多人游戏 → 直接连接，输入服务器地址。',
+                    '复制成功！<游戏版本：' + (MC_CONFIG.version || 'Java 1.21.1') + '> 打开游戏 → 多人游戏 → 直接连接，输入服务器地址。',
                     'success'
                 );
             }).catch(err => {
@@ -655,7 +833,7 @@
 
                 if (data.success && data.logs) {
                     const container = document.getElementById('logs-container');
-                    let html = '<table class="logs-table"><thead><tr><th>时间</th><th>操作</th><th>用户</th><th>IP</th><th>详情</th></tr></thead><tbody>';
+                    let html = '<div class="logs-table-wrapper"><table class="logs-table"><thead><tr><th>时间</th><th>操作</th><th>用户</th><th>IP</th><th>详情</th></tr></thead><tbody>';
                     data.logs.forEach(log => {
                         const opClass = log.operation.includes('SUCCESS') ? 'success' : (log.operation.includes('ERROR') ? 'error' : 'warning');
                         html += `<tr>
@@ -666,7 +844,7 @@
                             <td>${log.details}</td>
                         </tr>`;
                     });
-                    html += '</tbody></table>';
+                    html += '</tbody></table></div>';
                     container.innerHTML = html;
                 }
             } catch (error) {
