@@ -505,25 +505,7 @@ curl -H "Authorization: Bearer admin:password123" http://localhost:3000/api/inst
 
 ---
 
-### 问题 5: Redis 连接失败
-
-**错误信息**:
-```
-Redis 连接错误: Error: connect ECONNREFUSED 127.0.0.1:6379
-```
-
-**解决方案**:
-```bash
-# 启动 Redis
-redis-server
-
-# 或使用 Docker
-docker run -d -p 6379:6379 redis:latest
-```
-
----
-
-### 问题 6: "缺少必需参数"
+### 问题 5: "缺少必需参数"
 
 **原因**: 没有提供必需的查询参数
 
@@ -536,7 +518,7 @@ curl -H "Authorization: Bearer admin:password" \
 
 ---
 
-### 问题 7: "缺少所需权限"
+### 问题 6: "缺少所需权限"
 
 **原因**: 用户权限不足
 
@@ -546,7 +528,7 @@ curl -H "Authorization: Bearer admin:password" \
 
 ---
 
-### 问题 8: 实例未分配公网 IP
+### 问题 7: 实例未分配公网 IP
 
 **症状**: `publicIp` 为 `null`
 
