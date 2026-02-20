@@ -249,10 +249,119 @@
         </div>
 
         <div class="section">
+            <h2>局限性说明</h2>
+            <div style="background: #fffaf0; border-left: 4px solid #ed8936; padding: 15px; border-radius: 5px; margin-bottom: 15px;">
+                <p style="color: #4a5568; margin: 0 0 10px 0; font-weight: bold;">⚠️ 重要限制</p>
+                <p style="color: #4a5568; margin: 0 0 10px 0;">
+                    当前系统仅支持管理一个 Minecraft 服务器实例。如果已有实例存在，创建新实例的请求将会失败。
+                </p>
+            </div>
+            <div style="background: #f0fff4; border-left: 4px solid #48bb78; padding: 15px; border-radius: 5px;">
+                <p style="color: #4a5568; margin: 0 0 10px 0; font-weight: bold;">✅ 解决方案：使用腾讯云子账号</p>
+                <p style="color: #4a5568; margin: 0 0 10px 0;">
+                    推荐创建一个<strong>腾讯云子账号</strong>专门用于 MCSpot 项目，这样可以完美解决上述限制：
+                </p>
+                <ul style="color: #4a5568; margin: 10px 0 0 20px; padding: 0;">
+                    <li style="margin-bottom: 8px;">子账号资源隔离：子账号只会看到自己有权限的实例，不影响主账号的其他业务</li>
+                    <li style="margin-bottom: 8px;">精细权限控制：只授予 CVM 相关的必要权限，提高安全性</li>
+                    <li style="margin-bottom: 8px;">独立密钥：使用子账号的 SecretId 和 SecretKey，与主账号隔离</li>
+                </ul>
+                <p style="color: #4a5568; margin: 15px 0 0 0;">
+                    <strong>操作步骤：</strong>
+                </p>
+                <ol style="color: #4a5568; margin: 10px 0 0 20px; padding: 0;">
+                    <li style="margin-bottom: 8px;">登录腾讯云控制台，前往「访问管理 > 用户列表」</li>
+                    <li style="margin-bottom: 8px;">新建子账号，勾选「编程访问」以获取 API 密钥</li>
+                    <li style="margin-bottom: 8px;">为子账号添加 CVM 相关权限（如：QcloudCVMFullAccess）</li>
+                    <li style="margin-bottom: 8px;">将子账号的 SecretId 和 SecretKey 配置到环境变量中</li>
+                </ol>
+            </div>
+        </div>
+
+        <div class="section">
             <h2>认证方式</h2>
-            <p style="margin-bottom: 15px;">所有API接口需要在请求头中添加 Authorization 字段：</p>
+            <p style="margin-bottom: 15px;">所有API接口（除健康检查外）需要在请求头中添加 Authorization 字段：</p>
             <div class="code-block">
                 <code>Authorization: Bearer &lt;用户名&gt;:&lt;密码&gt;</code>
+            </div>
+            <p style="margin-top: 15px; color: #4a5568;">例如：</p>
+            <div class="code-block">
+                <code>Authorization: Bearer admin:password123</code>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>权限说明</h2>
+            <p style="margin-bottom: 15px; color: #4a5568;">系统支持基于角色的权限控制，不同权限可访问不同的API接口：</p>
+            <table style="width: 100%; border-collapse: collapse; background: #edf2f7; border-radius: 5px;">
+                <tr style="background: #2d3748; color: white;">
+                    <th style="padding: 12px; text-align: left; border: 1px solid #4a5568;">权限</th>
+                    <th style="padding: 12px; text-align: left; border: 1px solid #4a5568;">说明</th>
+                    <th style="padding: 12px; text-align: left; border: 1px solid #4a5568;">可访问接口</th>
+                </tr>
+                <tr>
+                    <td style="padding: 12px; border: 1px solid #cbd5e0; color: #2d3748;"><code>admin</code></td>
+                    <td style="padding: 12px; border: 1px solid #cbd5e0; color: #4a5568;">管理员权限，拥有所有权限</td>
+                    <td style="padding: 12px; border: 1px solid #cbd5e0; color: #4a5568;">所有接口</td>
+                </tr>
+                <tr>
+                    <td style="padding: 12px; border: 1px solid #cbd5e0; color: #2d3748;"><code>run_instance</code></td>
+                    <td style="padding: 12px; border: 1px solid #cbd5e0; color: #4a5568;">创建实例权限</td>
+                    <td style="padding: 12px; border: 1px solid #cbd5e0; color: #4a5568;">/api/run-instance, /api/user-info</td>
+                </tr>
+                <tr>
+                    <td style="padding: 12px; border: 1px solid #cbd5e0; color: #2d3748;"><code>start_instance</code></td>
+                    <td style="padding: 12px; border: 1px solid #cbd5e0; color: #4a5568;">启动实例权限</td>
+                    <td style="padding: 12px; border: 1px solid #cbd5e0; color: #4a5568;">/api/start-instance, /api/user-info</td>
+                </tr>
+                <tr>
+                    <td style="padding: 12px; border: 1px solid #cbd5e0; color: #2d3748;"><code>terminate_instance</code></td>
+                    <td style="padding: 12px; border: 1px solid #cbd5e0; color: #4a5568;">删除实例权限</td>
+                    <td style="padding: 12px; border: 1px solid #cbd5e0; color: #4a5568;">/api/terminate-instance, /api/user-info</td>
+                </tr>
+                <tr>
+                    <td style="padding: 12px; border: 1px solid #cbd5e0; color: #2d3748;"><code>read_instance</code></td>
+                    <td style="padding: 12px; border: 1px solid #cbd5e0; color: #4a5568;">查看实例权限</td>
+                    <td style="padding: 12px; border: 1px solid #cbd5e0; color: #4a5568;">/api/instances, /api/user-info</td>
+                </tr>
+                <tr>
+                    <td style="padding: 12px; border: 1px solid #cbd5e0; color: #2d3748;">任意权限</td>
+                    <td style="padding: 12px; border: 1px solid #cbd5e0; color: #4a5568;">基本用户权限</td>
+                    <td style="padding: 12px; border: 1px solid #cbd5e0; color: #4a5568;">/api/user-info</td>
+                </tr>
+            </table>
+            <p style="margin-top: 15px; color: #4a5568; font-size: 0.9em;">
+                注意：admin 权限拥有所有权限，无需额外配置其他权限。
+            </p>
+        </div>
+
+        <div class="section">
+            <h2>局限性说明</h2>
+            <div style="background: #fffaf0; border-left: 4px solid #ed8936; padding: 15px; border-radius: 5px; margin-bottom: 15px;">
+                <p style="color: #4a5568; margin: 0 0 10px 0; font-weight: bold;">⚠️ 重要限制</p>
+                <p style="color: #4a5568; margin: 0 0 10px 0;">
+                    当前系统仅支持管理一个 Minecraft 服务器实例。如果已有实例存在，创建新实例的请求将会失败。
+                </p>
+            </div>
+            <div style="background: #f0fff4; border-left: 4px solid #48bb78; padding: 15px; border-radius: 5px;">
+                <p style="color: #4a5568; margin: 0 0 10px 0; font-weight: bold;">✅ 解决方案：使用腾讯云子账号</p>
+                <p style="color: #4a5568; margin: 0 0 10px 0;">
+                    推荐创建一个<strong>腾讯云子账号</strong>专门用于 MCSpot 项目，这样可以完美解决上述限制：
+                </p>
+                <ul style="color: #4a5568; margin: 10px 0 0 20px; padding: 0;">
+                    <li style="margin-bottom: 8px;">子账号资源隔离：子账号只会看到自己有权限的实例，不影响主账号的其他业务</li>
+                    <li style="margin-bottom: 8px;">精细权限控制：只授予 CVM 相关的必要权限，提高安全性</li>
+                    <li style="margin-bottom: 8px;">独立密钥：使用子账号的 SecretId 和 SecretKey，与主账号隔离</li>
+                </ul>
+                <p style="color: #4a5568; margin: 15px 0 0 0;">
+                    <strong>操作步骤：</strong>
+                </p>
+                <ol style="color: #4a5568; margin: 10px 0 0 20px; padding: 0;">
+                    <li style="margin-bottom: 8px;">登录腾讯云控制台，前往「访问管理 > 用户列表」</li>
+                    <li style="margin-bottom: 8px;">新建子账号，勾选「编程访问」以获取 API 密钥</li>
+                    <li style="margin-bottom: 8px;">为子账号添加 CVM 相关权限（如：QcloudCVMFullAccess）</li>
+                    <li style="margin-bottom: 8px;">将子账号的 SecretId 和 SecretKey 配置到环境变量中</li>
+                </ol>
             </div>
         </div>
 
@@ -262,62 +371,261 @@
                 <li class="endpoint-item">
                     <span class="method">GET</span>
                     <span class="path">/api/run-instance</span>
-                    <span class="description">通过启动模板创建新的Minecraft服务器实例 (权限: run_instance)</span>
+                    <span class="description">通过启动模板创建新的实例 (权限: run_instance)</span>
+                    <div style="margin-top: 10px; padding: 10px; background: #edf2f7; border-radius: 5px;">
+                        <strong>请求参数：</strong><br>
+                        <code style="color: #2d3748;">templateId</code> (必需) - 启动模板ID<br>
+                        <code style="color: #2d3748;">templateVersion</code> (可选) - 启动模板版本号，默认为 DEFAULT
+                    </div>
                 </li>
 
                 <li class="endpoint-item">
                     <span class="method">GET</span>
                     <span class="path">/api/start-instance</span>
-                    <span class="description">启动已停止的Minecraft服务器实例 (权限: start_instance)</span>
+                    <span class="description">启动已停止的实例 (权限: start_instance)</span>
+                    <div style="margin-top: 10px; padding: 10px; background: #edf2f7; border-radius: 5px;">
+                        <strong>请求参数：</strong><br>
+                        <code style="color: #2d3748;">instanceId</code> (必需) - 要启动的实例ID
+                    </div>
                 </li>
 
                 <li class="endpoint-item">
                     <span class="method">GET</span>
                     <span class="path">/api/terminate-instance</span>
-                    <span class="description">删除指定的Minecraft服务器实例 (权限: terminate_instance)</span>
+                    <span class="description">删除指定的实例 (权限: terminate_instance)</span>
+                    <div style="margin-top: 10px; padding: 10px; background: #edf2f7; border-radius: 5px;">
+                        <strong>请求参数：</strong><br>
+                        <code style="color: #2d3748;">instanceId</code> (必需) - 要删除的实例ID
+                    </div>
                 </li>
 
                 <li class="endpoint-item">
                     <span class="method">GET</span>
                     <span class="path">/api/instances</span>
-                    <span class="description">查询当前账户下的所有Minecraft服务器实例 (权限: read_instance)</span>
+                    <span class="description">查询当前账户下的所有实例 (权限: read_instance)</span>
+                    <div style="margin-top: 10px; padding: 10px; background: #edf2f7; border-radius: 5px;">
+                        <strong>请求参数：</strong><br>
+                        无需参数
+                    </div>
                 </li>
 
                 <li class="endpoint-item">
                     <span class="method">GET</span>
                     <span class="path">/api/auth-logs</span>
                     <span class="description">获取操作日志（仅管理员）(权限: admin)</span>
+                    <div style="margin-top: 10px; padding: 10px; background: #edf2f7; border-radius: 5px;">
+                        <strong>请求参数：</strong><br>
+                        <code style="color: #2d3748;">limit</code> (可选) - 返回日志数量，默认500
+                    </div>
                 </li>
 
                 <li class="endpoint-item">
                     <span class="method">GET</span>
                     <span class="path">/api/user-info</span>
                     <span class="description">获取当前认证用户的信息 (权限: 任意)</span>
+                    <div style="margin-top: 10px; padding: 10px; background: #edf2f7; border-radius: 5px;">
+                        <strong>请求参数：</strong><br>
+                        无需参数
+                    </div>
                 </li>
 
                 <li class="endpoint-item">
                     <span class="method">GET</span>
                     <span class="path">/health</span>
                     <span class="description">健康检查（无需认证）</span>
+                    <div style="margin-top: 10px; padding: 10px; background: #edf2f7; border-radius: 5px;">
+                        <strong>请求参数：</strong><br>
+                        无需参数
+                    </div>
                 </li>
             </ul>
         </div>
 
         <div class="section">
+            <h2>错误码说明</h2>
+            <p style="margin-bottom: 15px; color: #4a5568;">API 接口可能返回以下 HTTP 状态码和错误信息：</p>
+            <table style="width: 100%; border-collapse: collapse; background: #edf2f7; border-radius: 5px;">
+                <tr style="background: #2d3748; color: white;">
+                    <th style="padding: 12px; text-align: left; border: 1px solid #4a5568;">状态码</th>
+                    <th style="padding: 12px; text-align: left; border: 1px solid #4a5568;">说明</th>
+                    <th style="padding: 12px; text-align: left; border: 1px solid #4a5568;">常见原因</th>
+                </tr>
+                <tr>
+                    <td style="padding: 12px; border: 1px solid #cbd5e0; color: #e53e3e; font-weight: bold;">400</td>
+                    <td style="padding: 12px; border: 1px solid #cbd5e0; color: #4a5568;">请求参数错误</td>
+                    <td style="padding: 12px; border: 1px solid #cbd5e0; color: #4a5568;">缺少必需参数、参数格式错误、已存在实例无法创建等</td>
+                </tr>
+                <tr>
+                    <td style="padding: 12px; border: 1px solid #cbd5e0; color: #e53e3e; font-weight: bold;">401</td>
+                    <td style="padding: 12px; border: 1px solid #cbd5e0; color: #4a5568;">未授权</td>
+                    <td style="padding: 12px; border: 1px solid #cbd5e0; color: #4a5568;">未提供认证信息、用户名或密码错误、认证格式错误</td>
+                </tr>
+                <tr>
+                    <td style="padding: 12px; border: 1px solid #cbd5e0; color: #e53e3e; font-weight: bold;">403</td>
+                    <td style="padding: 12px; border: 1px solid #cbd5e0; color: #4a5568;">权限不足</td>
+                    <td style="padding: 12px; border: 1px solid #cbd5e0; color: #4a5568;">当前用户缺少访问该接口所需的权限</td>
+                </tr>
+                <tr>
+                    <td style="padding: 12px; border: 1px solid #cbd5e0; color: #e53e3e; font-weight: bold;">429</td>
+                    <td style="padding: 12px; border: 1px solid #cbd5e0; color: #4a5568;">请求过于频繁</td>
+                    <td style="padding: 12px; border: 1px solid #cbd5e0; color: #4a5568;">认证失败次数过多，IP已被锁定15分钟</td>
+                </tr>
+                <tr>
+                    <td style="padding: 12px; border: 1px solid #cbd5e0; color: #e53e3e; font-weight: bold;">500</td>
+                    <td style="padding: 12px; border: 1px solid #cbd5e0; color: #4a5568;">服务器内部错误</td>
+                    <td style="padding: 12px; border: 1px solid #cbd5e0; color: #4a5568;">腾讯云API调用失败、Redis连接失败等</td>
+                </tr>
+                <tr>
+                    <td style="padding: 12px; border: 1px solid #cbd5e0; color: #38a169; font-weight: bold;">200</td>
+                    <td style="padding: 12px; border: 1px solid #cbd5e0; color: #4a5568;">请求成功</td>
+                    <td style="padding: 12px; border: 1px solid #cbd5e0; color: #4a5568;">请求处理成功，返回相应数据</td>
+                </tr>
+            </table>
+            <p style="margin-top: 15px; color: #4a5568; font-size: 0.9em;">
+                所有错误响应的格式均为：<code>{"success": false, "message": "错误信息", "error": "详细错误(可选)"}</code>
+            </p>
+        </div>
+
+        <div class="section">
             <h2>使用示例</h2>
-            <h3 style="color: #2d3748; margin: 15px 0;">创建实例</h3>
+
+            <h3 style="color: #2d3748; margin: 15px 0;">1. 创建实例</h3>
+            <p style="color: #4a5568; margin-bottom: 10px;">通过启动模板创建新的实例</p>
             <div class="code-block">
                 <code>curl -H "Authorization: Bearer admin:password" "<%= baseUrl %>/api/run-instance?templateId=lt-abc123&templateVersion=1"</code>
             </div>
+            <div style="margin-top: 10px; padding: 10px; background: #edf2f7; border-radius: 5px;">
+                <strong>成功响应示例：</strong>
+                <div class="code-block" style="margin-top: 5px; padding: 10px;">
+                    <code>{
+  "success": true,
+  "message": "实例创建成功",
+  "instanceId": "ins-xxxxxxxx"
+}</code>
+                </div>
+                <strong>失败响应示例：</strong>
+                <div class="code-block" style="margin-top: 5px; padding: 10px;">
+                    <code>{
+  "success": false,
+  "message": "已存在实例，无法创建。最多只允许一个实例。"
+}</code>
+                </div>
+            </div>
 
-            <h3 style="color: #2d3748; margin: 15px 0;">获取实例列表</h3>
+            <h3 style="color: #2d3748; margin: 25px 0 15px 0;">2. 启动实例</h3>
+            <p style="color: #4a5568; margin-bottom: 10px;">启动已停止的实例</p>
+            <div class="code-block">
+                <code>curl -H "Authorization: Bearer admin:password" "<%= baseUrl %>/api/start-instance?instanceId=ins-xxxxxxxx"</code>
+            </div>
+            <div style="margin-top: 10px; padding: 10px; background: #edf2f7; border-radius: 5px;">
+                <strong>成功响应示例：</strong>
+                <div class="code-block" style="margin-top: 5px; padding: 10px;">
+                    <code>{
+  "success": true,
+  "message": "实例启动请求已发送",
+  "instanceId": "ins-xxxxxxxx"
+}</code>
+                </div>
+            </div>
+
+            <h3 style="color: #2d3748; margin: 25px 0 15px 0;">3. 删除实例</h3>
+            <p style="color: #4a5568; margin-bottom: 10px;">删除指定的实例</p>
+            <div class="code-block">
+                <code>curl -H "Authorization: Bearer admin:password" "<%= baseUrl %>/api/terminate-instance?instanceId=ins-xxxxxxxx"</code>
+            </div>
+            <div style="margin-top: 10px; padding: 10px; background: #edf2f7; border-radius: 5px;">
+                <strong>成功响应示例：</strong>
+                <div class="code-block" style="margin-top: 5px; padding: 10px;">
+                    <code>{
+  "success": true,
+  "message": "实例删除请求已发送",
+  "instanceId": "ins-xxxxxxxx"
+}</code>
+                </div>
+            </div>
+
+            <h3 style="color: #2d3748; margin: 25px 0 15px 0;">4. 获取实例列表</h3>
+            <p style="color: #4a5568; margin-bottom: 10px;">查询当前账户下的所有实例</p>
             <div class="code-block">
                 <code>curl -H "Authorization: Bearer admin:password" "<%= baseUrl %>/api/instances"</code>
             </div>
+            <div style="margin-top: 10px; padding: 10px; background: #edf2f7; border-radius: 5px;">
+                <strong>成功响应示例：</strong>
+                <div class="code-block" style="margin-top: 5px; padding: 10px;">
+                    <code>{
+  "success": true,
+  "count": 1,
+  "instances": [
+    {
+      "instanceId": "ins-xxxxxxxx",
+      "instanceName": "MC-Server",
+      "instanceState": "RUNNING",
+      "instanceType": "S5.MEDIUM4",
+      "zone": "ap-shanghai-2",
+      "creationTime": "2025-02-20T12:00:00Z",
+      "publicIp": "x.x.x.x",
+      "privateIp": "x.x.x.x"
+    }
+  ]
+}</code>
+                </div>
+            </div>
 
-            <h3 style="color: #2d3748; margin: 15px 0;">获取操作日志</h3>
+            <h3 style="color: #2d3748; margin: 25px 0 15px 0;">5. 获取操作日志</h3>
+            <p style="color: #4a5568; margin-bottom: 10px;">获取操作日志（仅管理员权限）</p>
             <div class="code-block">
                 <code>curl -H "Authorization: Bearer admin:password" "<%= baseUrl %>/api/auth-logs?limit=10"</code>
+            </div>
+            <div style="margin-top: 10px; padding: 10px; background: #edf2f7; border-radius: 5px;">
+                <strong>成功响应示例：</strong>
+                <div class="code-block" style="margin-top: 5px; padding: 10px;">
+                    <code>{
+  "success": true,
+  "count": 10,
+  "logs": [
+    {
+      "requestId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+      "operation": "CREATE_INSTANCE_SUCCESS",
+      "clientIp": "x.x.x.x",
+      "userId": "admin",
+      "details": "实例创建成功: ins-xxxxxxxx",
+      "timestamp": "2025-02-20T12:00:00.000Z"
+    }
+  ]
+}</code>
+                </div>
+            </div>
+
+            <h3 style="color: #2d3748; margin: 25px 0 15px 0;">6. 获取用户信息</h3>
+            <p style="color: #4a5568; margin-bottom: 10px;">获取当前认证用户的信息</p>
+            <div class="code-block">
+                <code>curl -H "Authorization: Bearer admin:password" "<%= baseUrl %>/api/user-info"</code>
+            </div>
+            <div style="margin-top: 10px; padding: 10px; background: #edf2f7; border-radius: 5px;">
+                <strong>成功响应示例：</strong>
+                <div class="code-block" style="margin-top: 5px; padding: 10px;">
+                    <code>{
+  "success": true,
+  "userId": "admin",
+  "userName": "管理员",
+  "permissions": ["admin", "run_instance", "start_instance", "terminate_instance", "read_instance"]
+}</code>
+                </div>
+            </div>
+
+            <h3 style="color: #2d3748; margin: 25px 0 15px 0;">7. 健康检查</h3>
+            <p style="color: #4a5568; margin-bottom: 10px;">检查服务是否正常运行（无需认证）</p>
+            <div class="code-block">
+                <code>curl "<%= baseUrl %>/health"</code>
+            </div>
+            <div style="margin-top: 10px; padding: 10px; background: #edf2f7; border-radius: 5px;">
+                <strong>成功响应示例：</strong>
+                <div class="code-block" style="margin-top: 5px; padding: 10px;">
+                    <code>{
+  "status": "ok",
+  "timestamp": "2025-02-20T12:00:00.000Z"
+}</code>
+                </div>
             </div>
         </div>
 

@@ -641,18 +641,7 @@ app.get('/health', (req, res) => {
 app.listen(PORT, () => {
   console.log(`========================================`);
   console.log(`MCSpot - Minecraft 服务器按需启动工具`);
-  console.log(`========================================`);
-  console.log(`服务器运行在 http://localhost:${PORT}`);
   console.log(``);
-  console.log(`认证说明: 所有 API 接口需要在请求头中添加 Authorization: Bearer <username:password>`);
-  console.log(``);
-  console.log(`API 接口列表:`);
-  console.log(`  通过启动模板创建实例: GET /api/run-instance?templateId=<模板ID>&templateVersion=<版本号(可选)> [权限: run_instance]`);
-  console.log(`  启动现有实例: GET /api/start-instance?instanceId=<实例ID> [权限: start_instance]`);
-  console.log(`  删除实例: GET /api/terminate-instance?instanceId=<实例ID> [权限: terminate_instance]`);
-  console.log(`  获取实例列表: GET /api/instances [权限: read_instance]`);
-  console.log(`  获取操作日志: GET /api/auth-logs?userId=<用户ID(可选)>&limit=<数量> [权限: admin]`);
-  console.log(`  获取用户信息: GET /api/user-info [权限: 任意]`);
-  console.log(`  健康检查: GET /health [无需认证]`);
+  console.log(`服务运行在 http://localhost:${PORT}`);
   console.log(`========================================`);
 });
