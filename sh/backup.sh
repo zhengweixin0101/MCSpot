@@ -8,8 +8,15 @@ if [ -f "$CONFIG_FILE" ]; then
 fi
 
 MCS_DIR="${MCS_DIR}" # Minecraft 服务端目录
+
+STORAGE_TYPE="${STORAGE_TYPE:-s3}" # 存储方式: s3 或 cos
+
+# S3 配置
 S3_ENDPOINT="${S3_ENDPOINT}" # S3 兼容存储服务 URL
 S3_BUCKET="${S3_BUCKET}" # S3 存储桶名称
+
+# 腾讯云 COS 配置
+COS_BUCKET_ALIAS="${COS_BUCKET_ALIAS:-mcspot}" # COS 存储桶别名
 
 echo "[BACKUP] 开始备份..."
 
@@ -39,13 +46,26 @@ fi
 
 echo "[BACKUP] 压缩完成，文件大小: $(du -h "$BACKUP_FILE" | cut -f1)"
 
-# 上传到 S3
-echo "[BACKUP] 正在上传到 S3..."
-aws s3 cp "$BACKUP_FILE" "s3://$S3_BUCKET/mc/$BACKUP_FILE" --endpoint-url "$S3_ENDPOINT"
-
-if [ $? -eq 0 ]; then
-    echo "[BACKUP] ✓ 备份成功！$BACKUP_FILE 已上传到 S3"
+# 根据存储类型上传备份
+if [ "$STORAGE_TYPE" = "cos" ]; then
+    echo "[BACKUP] 正在上传到腾讯云 COS..."
+    coscli cp "$BACKUP_FILE" "cos://${COS_BUCKET_ALIAS}/mc/$BACKUP_FILE"
+    if [ $? -eq 0 ]; then
+        echo "[BACKUP] ✓ 备份成功！$BACKUP_FILE 已上传到 COS"
+    else
+        echo "[BACKUP] ✗ 上传失败！"
+        exit 1
+    fi
+elif [ "$STORAGE_TYPE" = "s3" ]; then
+    echo "[BACKUP] 正在上传到 S3..."
+    aws s3 cp "$BACKUP_FILE" "s3://$S3_BUCKET/mc/$BACKUP_FILE" --endpoint-url "$S3_ENDPOINT"
+    if [ $? -eq 0 ]; then
+        echo "[BACKUP] ✓ 备份成功！$BACKUP_FILE 已上传到 S3"
+    else
+        echo "[BACKUP] ✗ 上传失败！"
+        exit 1
+    fi
 else
-    echo "[BACKUP] ✗ 上传失败！"
+    echo "[BACKUP] 错误: 不支持的存储类型 $STORAGE_TYPE，请使用 s3 或 cos"
     exit 1
 fi

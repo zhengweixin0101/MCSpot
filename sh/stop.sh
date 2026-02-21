@@ -10,8 +10,15 @@ fi
 MCS_DIR="${MCS_DIR}" # Minecraft 服务端目录
 MC_JAR="${MC_JAR}" # Minecraft 服务端 JAR 文件名
 MC_JAR_PATH="$MCS_DIR/$MC_JAR" # JAR 文件完整路径
+
+STORAGE_TYPE="${STORAGE_TYPE:-s3}" # 存储方式: s3 或 cos
+
+# S3 配置
 S3_ENDPOINT="${S3_ENDPOINT}" # S3 兼容存储服务 URL
 S3_BUCKET="${S3_BUCKET}" # S3 存储桶名称
+
+# 腾讯云 COS 配置
+COS_BUCKET_ALIAS="${COS_BUCKET_ALIAS:-mcspot}" # COS 存储桶别名
 
 echo "[STOP] 开始手动停止流程..."
 
@@ -79,11 +86,20 @@ fi
 
 echo "[STOP] 世界数据和配置文件已打包为 world.zip"
 
-# 上传到 S3
-aws s3 cp world.zip \
-    "s3://$S3_BUCKET/mc/world.zip" \
-    --endpoint-url "$S3_ENDPOINT"
-
-echo "[STOP] world.zip 上传完成"
+# 根据存储类型上传存档
+if [ "$STORAGE_TYPE" = "cos" ]; then
+    echo "[STOP] 上传到腾讯云 COS..."
+    coscli cp world.zip "cos://${COS_BUCKET_ALIAS}/mc/world.zip"
+    echo "[STOP] world.zip 上传完成"
+elif [ "$STORAGE_TYPE" = "s3" ]; then
+    echo "[STOP] 上传到 S3..."
+    aws s3 cp world.zip \
+        "s3://$S3_BUCKET/mc/world.zip" \
+        --endpoint-url "$S3_ENDPOINT"
+    echo "[STOP] world.zip 上传完成"
+else
+    echo "[STOP] 错误: 不支持的存储类型 $STORAGE_TYPE，请使用 s3 或 cos"
+    exit 1
+fi
 
 echo "[STOP] 停止流程完成"

@@ -10,8 +10,16 @@ fi
 MCS_DIR="${MCS_DIR}" # Minecraft 服务端目录
 MC_JAR="${MC_JAR}" # Minecraft 服务端 JAR 文件名
 MC_JAR_PATH="$MCS_DIR/$MC_JAR" # JAR 文件完整路径
+
+STORAGE_TYPE="${STORAGE_TYPE:-s3}" # 存储方式: s3 或 cos
+
+# S3 配置
 S3_ENDPOINT="${S3_ENDPOINT}" # S3 兼容存储服务 URL
 S3_BUCKET="${S3_BUCKET}" # S3 存储桶名称
+
+# 腾讯云 COS 配置
+COS_BUCKET_ALIAS="${COS_BUCKET_ALIAS:-mcspot}" # COS 存储桶别名
+
 API_BASE="${API_BASE}" # API 基础 URL
 AUTH_CREDENTIALS="${AUTH_CREDENTIALS}" # 认证信息
 INSTANCE_DELETED=false
@@ -152,17 +160,38 @@ while true; do
 
         echo "[AUTO] world.zip 压缩完成"
 
-        # 上传到 S3
-        if aws s3 cp world.zip \
-            "s3://$S3_BUCKET/mc/world.zip" \
-            --endpoint-url "$S3_ENDPOINT"; then
-
-            echo "[AUTO] world.zip 上传成功"
-            BACKUP_SUCCESS=true
+        # 根据存储类型上传存档
+        UPLOAD_SUCCESS=false
+        if [ "$STORAGE_TYPE" = "cos" ]; then
+            echo "[AUTO] 上传到腾讯云 COS..."
+            if coscli cp world.zip "cos://${COS_BUCKET_ALIAS}/mc/world.zip"; then
+                UPLOAD_SUCCESS=true
+                echo "[AUTO] world.zip 上传成功"
+            else
+                echo "[AUTO] 上传失败，保留实例"
+                SHOULD_TERMINATE_ON_ERROR=false
+                exit 1
+            fi
+        elif [ "$STORAGE_TYPE" = "s3" ]; then
+            echo "[AUTO] 上传到 S3..."
+            if aws s3 cp world.zip \
+                "s3://$S3_BUCKET/mc/world.zip" \
+                --endpoint-url "$S3_ENDPOINT"; then
+                UPLOAD_SUCCESS=true
+                echo "[AUTO] world.zip 上传成功"
+            else
+                echo "[AUTO] 上传失败，保留实例"
+                SHOULD_TERMINATE_ON_ERROR=false
+                exit 1
+            fi
         else
-            echo "[AUTO] 上传失败，保留实例"
+            echo "[AUTO] 错误: 不支持的存储类型 $STORAGE_TYPE，请使用 s3 或 cos"
             SHOULD_TERMINATE_ON_ERROR=false
             exit 1
+        fi
+
+        if [ "$UPLOAD_SUCCESS" = true ]; then
+            BACKUP_SUCCESS=true
         fi
 
         # 删除实例
