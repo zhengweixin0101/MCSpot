@@ -14,6 +14,10 @@ MCSpot 是一个基于腾讯云 API 的 Minecraft 服务器按需启动系统。
 
 > 💡 **提示**：详细的部署文档（如：创建自定义镜像、子账号权限配置等）请移步至：[MCSpot 使用文档](https://zhengweixin.top/posts/mcspot-documentation)
 
+![ScreenShot](https://raw.githubusercontent.com/zhengweixin0101/MCSpot/refs/heads/main/ScreenShot1.png)
+
+![ScreenShot](https://raw.githubusercontent.com/zhengweixin0101/MCSpot/refs/heads/main/ScreenShot2.png)
+
 ## 📖 目录
 
 - [快速开始](#快速开始)
