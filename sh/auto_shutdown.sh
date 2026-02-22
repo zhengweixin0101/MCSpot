@@ -52,37 +52,16 @@ cleanup_on_error() {
 trap cleanup_on_error ERR
 
 IDLE_COUNT=0
-IDLE_THRESHOLD=5
+# 循环检测配置
+IDLE_THRESHOLD="${IDLE_THRESHOLD:-5}" # 连续空闲次数阈值
+CHECK_INTERVAL="${CHECK_INTERVAL:-120}" # 检测间隔（秒）
 
-# 获取实例信息
-echo "[AUTO] 获取实例列表..."
-INSTANCES_JSON=$(curl -s -H "Authorization: Bearer $AUTH_CREDENTIALS" \
-    "$API_BASE/api/instances")
-
-SUCCESS=$(echo "$INSTANCES_JSON" | jq -r '.success')
-
-if [ "$SUCCESS" != "true" ]; then
-    echo "[AUTO] 获取实例列表失败"
-    exit 1
-fi
-
-COUNT=$(echo "$INSTANCES_JSON" | jq -r '.count')
-
-if [ "$COUNT" -eq 0 ]; then
-    echo "[AUTO] 未找到任何实例"
-    exit 1
-elif [ "$COUNT" -gt 1 ]; then
-    echo "[AUTO] 发现多个实例，脚本退出"
-    exit 1
-fi
-
-INSTANCE_ID=$(echo "$INSTANCES_JSON" | jq -r '.instances[0].instanceId')
-echo "[AUTO] 实例 ID = $INSTANCE_ID"
 echo "[AUTO] 开始监听 Minecraft 玩家状态..."
+echo "[AUTO] 配置参数: 检测间隔 ${CHECK_INTERVAL}s, 空闲阈值 ${IDLE_THRESHOLD}次 (约 $((IDLE_THRESHOLD * CHECK_INTERVAL / 60)) 分钟)"
 
 # 主循环
 while true; do
-    sleep 120
+    sleep "$CHECK_INTERVAL"
 
     STATUS_JSON=$(curl -s -H "Authorization: Bearer $AUTH_CREDENTIALS" \
         "$API_BASE/api/server-status")
@@ -100,7 +79,7 @@ while true; do
 
     # 达到空闲阈值
     if [ "$IDLE_COUNT" -ge "$IDLE_THRESHOLD" ]; then
-        echo "[AUTO] 连续 $IDLE_COUNT 次检测无玩家（共 $((IDLE_COUNT*2)) 分钟），开始自动关服..."
+        echo "[AUTO] 连续 $IDLE_COUNT 次检测无玩家（共 $((IDLE_COUNT * CHECK_INTERVAL / 60)) 分钟），开始自动关服..."
 
         # 关闭 Minecraft 服务端
         if pgrep -f "$MC_JAR_PATH" > /dev/null 2>&1; then
