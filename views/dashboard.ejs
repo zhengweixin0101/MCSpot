@@ -893,25 +893,19 @@
                 return;
             }
 
-            const url = `https://api.mcsrvstat.us/3/${ip}:25565`;
-            console.log('正在获取MC服务器状态，URL:', url);
+            const url = '/api/server-status';
 
             try {
                 const response = await fetch(url, {
                     method: 'GET',
-                    timeout: 10000
+                    headers: getAuthHeaders()
                 });
                 const data = await response.json();
 
-                console.log('MC服务器状态响应数据:', data);
-
                 if (data) {
                     updateMcServerStatus(data);
-                } else {
-                    console.log('获取到的数据为空');
                 }
             } catch (error) {
-                console.error('获取MC服务器状态失败，URL:', url, '错误:', error);
             }
         }
 
@@ -923,7 +917,7 @@
 
             mcStatusContainer.style.display = 'grid';
             if (mcCacheHint) {
-                mcCacheHint.style.display = 'block';
+                mcCacheHint.style.display = 'none';
             }
 
             // 更新在线状态
@@ -931,7 +925,7 @@
             const onlineStatus = document.getElementById('mc-online-status');
             const onlinePlayers = document.getElementById('mc-online-players');
 
-            if (data.online) {
+            if (data.mcOnline) {
                 onlineCard.className = 'user-info-row mc-status-card-online';
                 onlineStatus.textContent = '在线';
             } else {
@@ -940,10 +934,8 @@
             }
 
             // 更新玩家数
-            if (data.players) {
-                const onlineCount = data.players.online || 0;
-                const maxCount = data.players.max || 0;
-                onlinePlayers.textContent = `${onlineCount} / ${maxCount}`;
+            if (data.playersOnline !== undefined && data.playersMax !== undefined) {
+                onlinePlayers.textContent = `${data.playersOnline} / ${data.playersMax}`;
             }
 
             // 更新版本
@@ -952,20 +944,20 @@
             }
 
             // 更新MOTD (服务器公告)
-            if (data.motd && data.motd.clean && data.motd.clean.length > 0) {
+            if (data.motd) {
                 const motdContainer = document.getElementById('mc-motd-container');
                 const motdText = document.getElementById('mc-motd');
-                motdText.textContent = data.motd.clean.join(' ');
+                motdText.textContent = data.motd;
                 motdContainer.style.display = 'block';
             }
 
             // 更新玩家列表
-            if (data.players && data.players.list && data.players.list.length > 0) {
+            if (data.playerList && data.playerList.length > 0) {
                 const playersContainer = document.getElementById('mc-players-container');
                 const playersList = document.getElementById('mc-players-list');
                 
                 let playersHtml = '';
-                data.players.list.forEach(player => {
+                data.playerList.forEach(player => {
                     playersHtml += `<div class="player-item">
                         <span class="player-name">${player.name}</span>
                         <span class="player-uuid">${player.uuid}</span>

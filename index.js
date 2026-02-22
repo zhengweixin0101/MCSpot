@@ -689,6 +689,12 @@ app.get('/api/server-status', authenticate, checkPermission('read_instance'), as
       motd = data.description.extra.map(e => e.text || '').join('');
     }
 
+    // 玩家列表
+    const playerList = (data.players?.sample || []).map(p => ({
+      name: p.name || '',
+      uuid: p.id || ''
+    }));
+
     // 返回最终状态
     return res.json({
       success: true,
@@ -698,6 +704,7 @@ app.get('/api/server-status', authenticate, checkPermission('read_instance'), as
       port,
       playersOnline: data.players?.online || 0,
       playersMax: data.players?.max || 0,
+      playerList,
       version: data.version?.name || '',
       motd
     });
