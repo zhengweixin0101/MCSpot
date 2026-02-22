@@ -1,8 +1,18 @@
 # MCSpot
 
-一个基于腾讯云 API 的 Minecraft 服务器按需启动、自动备份与释放的轻量级工具。提供创建、启动、删除实例以及查询实例信息等功能。
+MCSpot 是一个基于腾讯云 API 的 Minecraft 服务器按需启动系统。
 
-> 💡 **提示**：详细的部署文档（如：创建自定义镜像）请移步至：[MCSpot 使用文档](https://zhengweixin.top/posts/mcspot-documentation)
+核心能力：
+- 一键创建实例
+- 无人自动关服
+- 自动上传存档
+- 自动释放实例节省费用
+
+目标：让 Minecraft 服务器真正做到“用的时候才花钱”。
+
+适用对象：不想每次游玩都开房间，希望与好友开服务器、随时可以游玩MC但预算有限的玩家。
+
+> 💡 **提示**：详细的部署文档（如：创建自定义镜像、子账号权限配置等）请移步至：[MCSpot 使用文档](https://zhengweixin.top/posts/mcspot-documentation)
 
 ## 📖 目录
 
@@ -80,7 +90,7 @@ curl http://localhost:3000/health
 
 1. 登录腾讯云控制台，前往「访问管理 > 用户列表」
 2. 新建子账号，勾选「编程访问」以获取 API 密钥
-3. 为子账号添加 CVM 相关权限（如：QcloudCVMFullAccess）
+3. 为子账号添加相关权限
 4. 将子账号的 SecretId 和 SecretKey 配置到环境变量中
 
 ---
