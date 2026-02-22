@@ -2,6 +2,7 @@ const express = require('express');
 const tencentcloud = require("tencentcloud-sdk-nodejs");
 const dotenv = require('dotenv');
 const redis = require('redis');
+const mcPing = require('mc-ping-updated');
 const crypto = require('crypto');
 const cookieParser = require('cookie-parser');
 
@@ -597,6 +598,117 @@ app.get('/api/user-info', authenticate, async (req, res) => {
     userName: userConfig?.name || req.auth.userId,
     permissions: req.auth.permissions
   });
+});
+
+// 获取 Minecraft 服务器状态
+app.get('/api/server-status', authenticate, checkPermission('read_instance'), async (req, res) => {
+  try {
+    // 获取当前实例
+    const result = await describeInstancesList();
+
+    if (!result.success) {
+      return res.status(500).json({
+        success: false,
+        message: '获取实例失败',
+        error: result.error
+      });
+    }
+
+    if (result.instances.length === 0) {
+      return res.json({
+        success: true,
+        running: false,
+        message: '当前没有实例'
+      });
+    }
+
+    const instance = result.instances[0];
+
+    // 判断实例状态
+    if (instance.InstanceState !== 'RUNNING') {
+      return res.json({
+        success: true,
+        running: false,
+        instanceState: instance.InstanceState,
+        message: '实例未运行'
+      });
+    }
+
+    // 获取公网 IP
+    let publicIp = null;
+
+    if (instance.PublicIpAddresses && instance.PublicIpAddresses.length > 0) {
+      publicIp = instance.PublicIpAddresses[0];
+    } else if (instance.PublicIpAddress && instance.PublicIpAddress.length > 0) {
+      publicIp = instance.PublicIpAddress[0];
+    }
+
+    if (!publicIp) {
+      return res.json({
+        success: true,
+        running: true,
+        mcOnline: false,
+        message: '实例运行中，但未分配公网IP'
+      });
+    }
+
+    const port = parseInt(process.env.MC_PORT || '25565');
+
+    // Promise 包装 mc-ping-updated
+    const mcPingAsync = (host, port) => {
+      return new Promise((resolve, reject) => {
+        mcPing(host, port, (err, data) => {
+          if (err) return reject(err);
+          resolve(data);
+        });
+      });
+    };
+
+    let data;
+    try {
+      data = await mcPingAsync(publicIp, port);
+    } catch (err) {
+      return res.json({
+        success: true,
+        running: true,
+        mcOnline: false,
+        ip: publicIp,
+        port,
+        message: '实例运行中，但Minecraft服务未响应',
+        error: err.message
+      });
+    }
+
+    // 兼容各种 MOTD 结构
+    let motd = '';
+    if (typeof data.description === 'string') {
+      motd = data.description;
+    } else if (data.description?.text) {
+      motd = data.description.text;
+    } else if (Array.isArray(data.description?.extra)) {
+      motd = data.description.extra.map(e => e.text || '').join('');
+    }
+
+    // 返回最终状态
+    return res.json({
+      success: true,
+      running: true,
+      mcOnline: true,
+      ip: publicIp,
+      port,
+      playersOnline: data.players?.online || 0,
+      playersMax: data.players?.max || 0,
+      version: data.version?.name || '',
+      motd
+    });
+
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: '查询服务器状态失败',
+      error: error.message
+    });
+  }
 });
 
 // 首页 - 返回登录页面
