@@ -606,7 +606,7 @@ app.get('/', (req, res) => {
 
 // 服务器控制台页面
 app.get('/dashboard', webAuth, (req, res) => {
-  res.render('index', {
+  res.render('dashboard', {
     title: '控制台 - MCSpot',
     port: PORT,
     baseUrl: `http://localhost:${PORT}`,
