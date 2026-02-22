@@ -28,10 +28,10 @@ SHOULD_TERMINATE_ON_ERROR=true
 
 # 删除实例函数
 terminate_instance() {
-    if [ -n "${INSTANCE_ID:-}" ] && [ "$INSTANCE_DELETED" = false ]; then
-        echo "[AUTO] 删除实例 $INSTANCE_ID..."
+    if [ "$INSTANCE_DELETED" = false ]; then
+        echo "[AUTO] 删除实例..."
         curl -s -H "Authorization: Bearer $AUTH_CREDENTIALS" \
-            "$API_BASE/api/terminate-instance?instanceId=$INSTANCE_ID"
+            "$API_BASE/api/terminate-instance"
         echo
         echo "[AUTO] 实例删除请求已发送"
         INSTANCE_DELETED=true
@@ -78,27 +78,17 @@ fi
 
 INSTANCE_ID=$(echo "$INSTANCES_JSON" | jq -r '.instances[0].instanceId')
 echo "[AUTO] 实例 ID = $INSTANCE_ID"
-
-echo "[AUTO] 获取当前实例公网 IP..."
-PUBLIC_IP=$(echo "$INSTANCES_JSON" | jq -r '.instances[0].publicIp')
-
-if [ -z "$PUBLIC_IP" ] || [ "$PUBLIC_IP" == "null" ]; then
-    echo "[AUTO] 无法获取公网 IP"
-    exit 1
-fi
-
-echo "[AUTO] 实例公网 IP = $PUBLIC_IP"
 echo "[AUTO] 开始监听 Minecraft 玩家状态..."
 
 # 主循环
 while true; do
     sleep 120
 
-    STATUS_JSON=$(curl -s -A "Mozilla/5.0" \
-        "https://api.mcsrvstat.us/3/$PUBLIC_IP")
+    STATUS_JSON=$(curl -s -H "Authorization: Bearer $AUTH_CREDENTIALS" \
+        "$API_BASE/api/server-status")
 
-    ONLINE=$(echo "$STATUS_JSON" | jq -r '.online')
-    PLAYERS=$(echo "$STATUS_JSON" | jq -r '.players.online // 0')
+    ONLINE=$(echo "$STATUS_JSON" | jq -r '.mcOnline')
+    PLAYERS=$(echo "$STATUS_JSON" | jq -r '.playersOnline // 0')
 
     if [ "$ONLINE" == "true" ] && [ "$PLAYERS" -gt 0 ]; then
         IDLE_COUNT=0

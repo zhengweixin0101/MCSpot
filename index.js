@@ -375,43 +375,39 @@ async function describeInstancesList() {
   }
 }
 
-// 获取实例详细信息函数
-async function describeInstance(instanceId) {
-  try {
-    const response = await client.DescribeInstances({
-      InstanceIds: [instanceId]
-    });
-    if (response.InstanceSet && response.InstanceSet.length > 0) {
-      return {
-        success: true,
-        instance: response.InstanceSet[0]
-      };
-    }
-    return {
-      success: false,
-      error: '实例不存在'
-    };
-  } catch (error) {
-    return {
-      success: false,
-      error: error.message
-    };
+// 获取账号下唯一实例 ID
+async function getUniqueInstanceId() {
+  const result = await describeInstancesList();
+
+  if (!result.success) {
+    throw new Error(`获取实例列表失败: ${result.error}`);
   }
+
+  if (result.instances.length === 0) {
+    throw new Error('当前账号下没有实例');
+  }
+
+  if (result.instances.length > 1) {
+    throw new Error('存在多个实例，无法自动选择唯一实例');
+  }
+
+  return result.instances[0].InstanceId;
 }
 
 // GET 请求接口 - 通过启动模板创建实例
 app.get('/api/run-instance', authenticate, checkPermission('run_instance'), async (req, res) => {
-  const { templateId, templateVersion } = req.query;
+  const templateId = process.env.MC_LAUNCH_TEMPLATE_ID;
+  const templateVersion = process.env.MC_LAUNCH_TEMPLATE_VERSION || 'DEFAULT';
 
   if (!templateId) {
-    return res.status(400).json({
+    return res.status(500).json({
       success: false,
-      message: '缺少必需参数: templateId'
+      message: '服务器配置错误：未设置环境变量 MC_LAUNCH_TEMPLATE_ID'
     });
   }
 
   await logOperation(req.auth.requestId, 'CREATE_INSTANCE', getClientIp(req), req.auth.userId,
-    `创建实例请求: TemplateID=${templateId}, Version=${templateVersion || 'DEFAULT'}`);
+    `创建实例请求: TemplateID=${templateId}, Version=${templateVersion}`);
 
   // 检查现有实例数量
   const existingResult = await describeInstancesList();
@@ -424,7 +420,7 @@ app.get('/api/run-instance', authenticate, checkPermission('run_instance'), asyn
     });
   }
 
-  const result = await runInstances(templateId, templateVersion || 'DEFAULT');
+  const result = await runInstances(templateId, templateVersion);
 
   if (result.success) {
     await logOperation(req.auth.requestId, 'CREATE_INSTANCE_SUCCESS', getClientIp(req), req.auth.userId,
@@ -445,72 +441,33 @@ app.get('/api/run-instance', authenticate, checkPermission('run_instance'), asyn
   }
 });
 
-// GET 请求接口 - 启动现有实例
-app.get('/api/start-instance', authenticate, checkPermission('start_instance'), async (req, res) => {
-  const { instanceId } = req.query;
-
-  if (!instanceId) {
-    return res.status(400).json({
-      success: false,
-      message: '缺少必需参数: instanceId'
-    });
-  }
-
-  await logOperation(req.auth.requestId, 'START_INSTANCE', getClientIp(req), req.auth.userId,
-    `启动实例请求: ${instanceId}`);
-
-  try {
-    await client.StartInstances({ InstanceIds: [instanceId] });
-    await logOperation(req.auth.requestId, 'START_INSTANCE_SUCCESS', getClientIp(req), req.auth.userId,
-      `实例 ${instanceId} 启动请求已发送`);
-
-    res.json({
-      success: true,
-      message: '实例启动请求已发送',
-      instanceId
-    });
-  } catch (error) {
-    await logOperation(req.auth.requestId, 'START_INSTANCE_ERROR', getClientIp(req), req.auth.userId,
-      `启动实例错误: ${error.message}`);
-    res.status(500).json({
-      success: false,
-      message: '启动实例失败',
-      error: error.message
-    });
-  }
-});
-
 // GET 请求接口 - 删除实例
 app.get('/api/terminate-instance', authenticate, checkPermission('terminate_instance'), async (req, res) => {
-  const { instanceId } = req.query;
+  try {
+    const instanceId = await getUniqueInstanceId();
 
-  if (!instanceId) {
-    return res.status(400).json({
-      success: false,
-      message: '缺少必需参数: instanceId'
-    });
-  }
+    await logOperation(req.auth.requestId, 'TERMINATE_INSTANCE', getClientIp(req), req.auth.userId,
+      `删除实例请求: ${instanceId}`);
 
-  await logOperation(req.auth.requestId, 'TERMINATE_INSTANCE', getClientIp(req), req.auth.userId,
-    `删除实例请求: ${instanceId}`);
+    const result = await terminateInstances([instanceId]);
 
-  const result = await terminateInstances([instanceId]);
-
-  if (result.success) {
-    await logOperation(req.auth.requestId, 'TERMINATE_INSTANCE_SUCCESS', getClientIp(req), req.auth.userId,
-      `实例 ${instanceId} 删除请求已发送`);
-    res.json({
-      success: true,
-      message: '实例删除请求已发送',
-      instanceId
-    });
-  } else {
+    if (result.success) {
+      await logOperation(req.auth.requestId, 'TERMINATE_INSTANCE_SUCCESS', getClientIp(req), req.auth.userId,
+        `实例 ${instanceId} 删除请求已发送`);
+      res.json({
+        success: true,
+        message: '实例删除请求已发送',
+        instanceId
+      });
+    } else {
+      throw new Error(result.error);
+    }
+  } catch (err) {
     await logOperation(req.auth.requestId, 'TERMINATE_INSTANCE_ERROR', getClientIp(req), req.auth.userId,
-      `删除实例错误: ${result.error}`);
+      err.message);
     res.status(500).json({
       success: false,
-      message: '删除实例失败',
-      error: result.error
+      message: err.message
     });
   }
 });
@@ -731,7 +688,6 @@ app.get('/dashboard', webAuth, (req, res) => {
     baseUrl: `http://localhost:${PORT}`,
     user: req.auth,
     mcConfig: {
-      launchTemplateId: process.env.MC_LAUNCH_TEMPLATE_ID,
       port: process.env.MC_PORT || 25565,
       version: process.env.MC_VERSION || '未设置'
     }

@@ -746,7 +746,7 @@
                     </div>
                     <div class="info-row">
                         <span class="info-label">MC游戏端口</span>
-                        <span class="info-value highlight">25565</span>
+                        <span class="info-value highlight" id="mc-port">-</span>
                     </div>
                     <div class="info-row">
                         <span class="info-label">服务器地址</span>
@@ -761,9 +761,6 @@
                 <div class="actions">
                     <button class="btn btn-warning" onclick="refreshStatus()">刷新状态</button>
                     <button id="btn-copy-address" class="btn btn-primary" onclick="copyServerAddress()" style="display: none;">复制服务器地址</button>
-                    <% if (user.permissions.includes('start_instance')) { %>
-                    <button id="btn-start" class="btn btn-success" onclick="startServer()" style="display: none;">启动服务器</button>
-                    <% } %>
                     <% if (user.permissions.includes('terminate_instance') || user.permissions.includes('admin')) { %>
                     <button id="btn-stop" class="btn btn-danger" onclick="terminateServer()">删除实例</button>
                     <% } %>
@@ -822,6 +819,11 @@
         const USER_PERMISSIONS = <%- JSON.stringify(user ? user.permissions : []) %>;
         // MC配置
         const MC_CONFIG = <%- JSON.stringify(mcConfig || {}) %>;
+
+        const mcPortElement = document.getElementById('mc-port');
+        if (mcPortElement && MC_CONFIG && MC_CONFIG.port) {
+            mcPortElement.textContent = MC_CONFIG.port;
+        }
 
         // 获取cookie的辅助函数
         function getCookie(name) {
@@ -977,17 +979,12 @@
                 return;
             }
 
-            if (!MC_CONFIG.launchTemplateId) {
-                showMessage('错误：未配置启动模板ID', 'error');
-                return;
-            }
-
             const btn = event.target;
             btn.disabled = true;
             btn.textContent = '创建中...';
 
             try {
-                const response = await fetch(`/api/run-instance?templateId=${MC_CONFIG.launchTemplateId}`, {
+                const response = await fetch(`/api/run-instance`, {
                     headers: getAuthHeaders()
                 });
                 const data = await response.json();
@@ -1006,57 +1003,22 @@
             }
         }
 
-        // 启动服务器
-        async function startServer() {
-            if (!confirm('确定要启动服务器吗？')) {
-                return;
-            }
-
-            const instanceId = document.getElementById('instance-id').textContent;
-            const btn = document.getElementById('btn-start');
-            btn.disabled = true;
-            btn.textContent = '启动中...';
-
-            try {
-                const response = await fetch(`/api/start-instance?instanceId=${instanceId}`, {
-                    headers: getAuthHeaders()
-                });
-                const data = await response.json();
-
-                if (data.success) {
-                    showMessage('服务器启动请求已发送', 'success');
-                    setTimeout(() => refreshStatus(), 2000);
-                } else {
-                    showMessage('启动失败: ' + data.message, 'error');
-                }
-            } catch (error) {
-                showMessage('启动失败: ' + error.message, 'error');
-            } finally {
-                btn.disabled = false;
-                btn.textContent = '启动服务器';
-            }
-        }
-
         // 删除服务器
         async function terminateServer() {
-            if (!confirm('确定要删除实例吗？手动删除无法自动备份，此操作不可恢复！')) {
-                return;
-            }
+            if (!confirm('确定要删除实例吗？手动删除无法自动备份，此操作不可恢复！')) return;
 
-            const instanceId = document.getElementById('instance-id').textContent;
             const btn = document.getElementById('btn-stop');
             btn.disabled = true;
             btn.textContent = '删除中...';
 
             try {
-                const response = await fetch(`/api/terminate-instance?instanceId=${instanceId}`, {
+                const response = await fetch(`/api/terminate-instance`, {
                     headers: getAuthHeaders()
                 });
                 const data = await response.json();
 
                 if (data.success) {
                     showMessage('服务器删除成功！', 'success');
-                    // 清理定时器
                     if (ipPollingInterval) clearInterval(ipPollingInterval);
                     if (mcStatusPollingInterval) clearInterval(mcStatusPollingInterval);
                     setTimeout(() => refreshStatus(), 2000);
@@ -1161,27 +1123,17 @@
 
                         const statusIndicator = document.getElementById('status-indicator');
                         const statusText = document.getElementById('status-text');
-                        const btnStart = document.getElementById('btn-start');
                         const btnCopyAddress = document.getElementById('btn-copy-address');
 
                         if (instance.instanceState === 'RUNNING') {
                             statusIndicator.className = 'status-indicator running';
                             statusText.textContent = '运行中';
-                            if (USER_PERMISSIONS.includes('start_instance')) {
-                                btnStart.style.display = 'none';
-                            }
                         } else if (instance.instanceState === 'STOPPED') {
                             statusIndicator.className = 'status-indicator stopped';
                             statusText.textContent = '已停止';
-                            if (USER_PERMISSIONS.includes('start_instance')) {
-                                btnStart.style.display = 'inline-block';
-                            }
                         } else {
                             statusIndicator.className = 'status-indicator pending';
                             statusText.textContent = getStateText(instance.instanceState);
-                            if (USER_PERMISSIONS.includes('start_instance')) {
-                                btnStart.style.display = 'none';
-                            }
                         }
 
                         if (!instance.publicIp || instance.publicIp === null) {
@@ -1199,7 +1151,7 @@
                                 refreshStatus();
                             }, 2000);
                         } else {
-                            const serverAddress = instance.publicIp + ':25565';
+                            const serverAddress = instance.publicIp + ':' + (MC_CONFIG && MC_CONFIG.port ? MC_CONFIG.port : 25565);
                             document.getElementById('public-ip').textContent = instance.publicIp;
                             document.getElementById('private-ip').textContent = instance.privateIp || '-';
                             document.getElementById('server-address').textContent = serverAddress;

@@ -204,9 +204,8 @@ curl -H "Authorization: Bearer admin:Admin@abc123456!" http://localhost:3000/api
 |------|------|---------|
 | `admin` | 管理员权限 | 所有操作，包括查看日志 |
 | `run_instance` | 创建实例 | 创建新的 CVM 实例 |
-| `start_instance` | 启动实例 | 启动已停止的实例 |
 | `terminate_instance` | 删除实例 | 删除 CVM 实例 |
-| `read_instance` | 读取实例信息 | 查询实例列表和 IP 地址 |
+| `read_instance` | 读取实例信息 | 查询实例列表、服务器状态和 IP 地址 |
 
 **注意**：`admin` 权限拥有所有权限，无需额外配置其他权限。
 
@@ -226,22 +225,22 @@ curl -H "Authorization: Bearer admin:Admin@abc123456!" http://localhost:3000/api
 
 **请求**
 ```
-GET /api/run-instance?templateId=<模板ID>&templateVersion=<版本>
+GET /api/run-instance
 ```
 
 **权限**: `run_instance`
 
-**参数**
+**请求参数**: 无
 
-| 参数 | 类型 | 必需 | 说明 |
-|------|------|------|------|
-| `templateId` | string | 是 | 启动模板 ID |
-| `templateVersion` | string | 否 | 模板版本，默认使用 `DEFAULT` |
+**说明**
+
+- 启动模板 ID 从环境变量 `MC_LAUNCH_TEMPLATE_ID` 读取
+- 启动模板版本从环境变量 `MC_LAUNCH_TEMPLATE_VERSION` 读取，未设置时默认为 `DEFAULT`
 
 **请求示例**
 ```bash
 curl -H "Authorization: Bearer admin:password123" \
-  "http://localhost:3000/api/run-instance?templateId=lt-abc123&templateVersion=1"
+  "http://localhost:3000/api/run-instance"
 ```
 
 **响应示例**
@@ -266,68 +265,28 @@ curl -H "Authorization: Bearer admin:password123" \
 
 ---
 
-### 2. 启动实例
-
-启动已停止的云服务器实例。
-
-**请求**
-```
-GET /api/start-instance?instanceId=<实例ID>
-```
-
-**权限**: `start_instance`
-
-**参数**
-
-| 参数 | 类型 | 必需 | 说明 |
-|------|------|------|------|
-| `instanceId` | string | 是 | 实例 ID |
-
-**请求示例**
-```bash
-curl -H "Authorization: Bearer operator:password123" \
-  "http://localhost:3000/api/start-instance?instanceId=ins-abc123xyz"
-```
-
-**响应示例**
-
-✅ 成功：
-```json
-{
-  "success": true,
-  "message": "实例启动请求已发送",
-  "instanceId": "ins-abc123xyz"
-}
-```
-
----
-
-### 3. 删除实例
+### 2. 删除实例
 
 删除指定的云服务器实例（**不可逆操作**）。
 
 **请求**
 ```
-GET /api/terminate-instance?instanceId=<实例ID>
+GET /api/terminate-instance
 ```
 
 **权限**: `terminate_instance`
 
-**参数**
-
-| 参数 | 类型 | 必需 | 说明 |
-|------|------|------|------|
-| `instanceId` | string | 是 | 实例 ID |
+**请求参数**: 无
 
 **请求示例**
 ```bash
 curl -H "Authorization: Bearer operator:password123" \
-  "http://localhost:3000/api/terminate-instance?instanceId=ins-abc123xyz"
+  "http://localhost:3000/api/terminate-instance"
 ```
 
 ---
 
-### 4. 获取实例列表
+### 3. 获取实例列表
 
 查询当前账户下的所有云服务器实例。
 
@@ -382,13 +341,13 @@ curl -H "Authorization: Bearer viewer:password123" \
 
 ---
 
-### 5. 获取操作日志
+### 4. 获取操作日志
 
 查询系统操作日志（需要 admin 权限）。
 
 **请求**
 ```
-GET /api/auth-logs?userId=<用户ID>&limit=<数量>
+GET /api/auth-logs?limit=<数量>
 ```
 
 **权限**: `admin`
@@ -397,8 +356,7 @@ GET /api/auth-logs?userId=<用户ID>&limit=<数量>
 
 | 参数 | 类型 | 必需 | 说明 |
 |------|------|------|------|
-| `userId` | string | 否 | 筛选特定用户的日志 |
-| `limit` | number | 否 | 返回日志条数，默认 50 |
+| `limit` | number | 否 | 返回日志条数，默认 500 |
 
 **响应示例**
 
@@ -422,7 +380,7 @@ GET /api/auth-logs?userId=<用户ID>&limit=<数量>
 
 ---
 
-### 6. 获取用户信息
+### 5. 获取用户信息
 
 获取当前认证用户的基本信息。
 
@@ -447,7 +405,7 @@ GET /api/user-info
 
 ---
 
-### 7. 健康检查
+### 6. 健康检查
 
 检查服务状态（无需认证）。
 
@@ -468,6 +426,38 @@ GET /health
 
 ---
 
+### 7. 获取服务器状态
+
+获取当前 Minecraft 服务器的在线状态、端口和玩家信息。
+
+**请求**
+```
+GET /api/server-status
+```
+
+**权限**: `read_instance`
+
+**请求参数**: 无
+
+**响应示例**
+
+✅ 成功：
+```json
+{
+  "success": true,
+  "running": true,
+  "mcOnline": true,
+  "ip": "1.2.3.4",
+  "port": 25565,
+  "playersOnline": 2,
+  "playersMax": 20,
+  "version": "1.20.4",
+  "motd": "欢迎来到 MCSpot!"
+}
+```
+
+---
+
 ## 使用示例
 
 ### 完整工作流程
@@ -479,7 +469,7 @@ curl -H "Authorization: Bearer admin:Admin@abc123456!" \
 
 # 2. 创建实例
 curl -H "Authorization: Bearer operator:Operator@123456" \
-  "http://localhost:3000/api/run-instance?templateId=lt-xxxxx&templateVersion=1"
+  "http://localhost:3000/api/run-instance"
 
 # 3. 查看实例列表
 curl -H "Authorization: Bearer viewer:Viewer@123456" \
@@ -491,7 +481,7 @@ curl -H "Authorization: Bearer admin:Admin@abc123456!" \
 
 # 5. 删除实例
 curl -H "Authorization: Bearer operator:Operator@123456" \
-  "http://localhost:3000/api/terminate-instance?instanceId=ins-xxxxx"
+  "http://localhost:3000/api/terminate-instance"
 ```
 
 ---
@@ -567,14 +557,12 @@ curl -H "Authorization: Bearer admin:password123" http://localhost:3000/api/inst
 
 ### 问题 5: "缺少必需参数"
 
-**原因**: 没有提供必需的查询参数
+**原因**: 请求未按文档要求提供必要的参数（查询参数或请求体字段）
 
 **解决方案**:
-```bash
-# 需要提供 instanceId 参数的接口示例：
-curl -H "Authorization: Bearer admin:password" \
-  "http://localhost:3000/api/start-instance?instanceId=ins-xxxxx"
-```
+- 对照「API 接口」章节，检查每个接口需要哪些参数
+- 确认 URL 中的查询参数是否包含且拼写正确
+- 若为 POST/PUT 等带请求体的接口，检查 JSON 字段是否完整
 
 ---
 

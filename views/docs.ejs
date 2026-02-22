@@ -272,7 +272,7 @@
                 <ol style="color: #4a5568; margin: 10px 0 0 20px; padding: 0;">
                     <li style="margin-bottom: 8px;">登录腾讯云控制台，前往「访问管理 > 用户列表」</li>
                     <li style="margin-bottom: 8px;">新建子账号，勾选「编程访问」以获取 API 密钥</li>
-                    <li style="margin-bottom: 8px;">为子账号添加 CVM 相关权限（如：QcloudCVMFullAccess）</li>
+                    <li style="margin-bottom: 8px;">为子账号添加 CVM 相关权限</li>
                     <li style="margin-bottom: 8px;">将子账号的 SecretId 和 SecretKey 配置到环境变量中</li>
                 </ol>
             </div>
@@ -310,11 +310,6 @@
                     <td style="padding: 12px; border: 1px solid #cbd5e0; color: #4a5568;">/api/run-instance, /api/user-info</td>
                 </tr>
                 <tr>
-                    <td style="padding: 12px; border: 1px solid #cbd5e0; color: #2d3748;"><code>start_instance</code></td>
-                    <td style="padding: 12px; border: 1px solid #cbd5e0; color: #4a5568;">启动实例权限</td>
-                    <td style="padding: 12px; border: 1px solid #cbd5e0; color: #4a5568;">/api/start-instance, /api/user-info</td>
-                </tr>
-                <tr>
                     <td style="padding: 12px; border: 1px solid #cbd5e0; color: #2d3748;"><code>terminate_instance</code></td>
                     <td style="padding: 12px; border: 1px solid #cbd5e0; color: #4a5568;">删除实例权限</td>
                     <td style="padding: 12px; border: 1px solid #cbd5e0; color: #4a5568;">/api/terminate-instance, /api/user-info</td>
@@ -322,7 +317,7 @@
                 <tr>
                     <td style="padding: 12px; border: 1px solid #cbd5e0; color: #2d3748;"><code>read_instance</code></td>
                     <td style="padding: 12px; border: 1px solid #cbd5e0; color: #4a5568;">查看实例权限</td>
-                    <td style="padding: 12px; border: 1px solid #cbd5e0; color: #4a5568;">/api/instances, /api/user-info</td>
+                    <td style="padding: 12px; border: 1px solid #cbd5e0; color: #4a5568;">/api/instances, /api/server-status, /api/user-info</td>
                 </tr>
                 <tr>
                     <td style="padding: 12px; border: 1px solid #cbd5e0; color: #2d3748;">任意权限</td>
@@ -335,35 +330,6 @@
             </p>
         </div>
 
-        <div class="section">
-            <h2>局限性说明</h2>
-            <div style="background: #fffaf0; border-left: 4px solid #ed8936; padding: 15px; border-radius: 5px; margin-bottom: 15px;">
-                <p style="color: #4a5568; margin: 0 0 10px 0; font-weight: bold;">⚠️ 重要限制</p>
-                <p style="color: #4a5568; margin: 0 0 10px 0;">
-                    当前系统仅支持管理一个 Minecraft 服务器实例。如果已有实例存在，创建新实例的请求将会失败。
-                </p>
-            </div>
-            <div style="background: #f0fff4; border-left: 4px solid #48bb78; padding: 15px; border-radius: 5px;">
-                <p style="color: #4a5568; margin: 0 0 10px 0; font-weight: bold;">✅ 解决方案：使用腾讯云子账号</p>
-                <p style="color: #4a5568; margin: 0 0 10px 0;">
-                    推荐创建一个<strong>腾讯云子账号</strong>专门用于 MCSpot 项目，这样可以完美解决上述限制：
-                </p>
-                <ul style="color: #4a5568; margin: 10px 0 0 20px; padding: 0;">
-                    <li style="margin-bottom: 8px;">子账号资源隔离：子账号只会看到自己有权限的实例，不影响主账号的其他业务</li>
-                    <li style="margin-bottom: 8px;">精细权限控制：只授予 CVM 相关的必要权限，提高安全性</li>
-                    <li style="margin-bottom: 8px;">独立密钥：使用子账号的 SecretId 和 SecretKey，与主账号隔离</li>
-                </ul>
-                <p style="color: #4a5568; margin: 15px 0 0 0;">
-                    <strong>操作步骤：</strong>
-                </p>
-                <ol style="color: #4a5568; margin: 10px 0 0 20px; padding: 0;">
-                    <li style="margin-bottom: 8px;">登录腾讯云控制台，前往「访问管理 > 用户列表」</li>
-                    <li style="margin-bottom: 8px;">新建子账号，勾选「编程访问」以获取 API 密钥</li>
-                    <li style="margin-bottom: 8px;">为子账号添加 CVM 相关权限（如：QcloudCVMFullAccess）</li>
-                    <li style="margin-bottom: 8px;">将子账号的 SecretId 和 SecretKey 配置到环境变量中</li>
-                </ol>
-            </div>
-        </div>
 
         <div class="section">
             <h2>API 端点列表</h2>
@@ -374,28 +340,17 @@
                     <span class="description">通过启动模板创建新的实例 (权限: run_instance)</span>
                     <div style="margin-top: 10px; padding: 10px; background: #edf2f7; border-radius: 5px;">
                         <strong>请求参数：</strong><br>
-                        <code style="color: #2d3748;">templateId</code> (必需) - 启动模板ID<br>
-                        <code style="color: #2d3748;">templateVersion</code> (可选) - 启动模板版本号，默认为 DEFAULT
-                    </div>
-                </li>
-
-                <li class="endpoint-item">
-                    <span class="method">GET</span>
-                    <span class="path">/api/start-instance</span>
-                    <span class="description">启动已停止的实例 (权限: start_instance)</span>
-                    <div style="margin-top: 10px; padding: 10px; background: #edf2f7; border-radius: 5px;">
-                        <strong>请求参数：</strong><br>
-                        <code style="color: #2d3748;">instanceId</code> (必需) - 要启动的实例ID
+                        无需参数（使用环境变量 MC_LAUNCH_TEMPLATE_ID / MC_LAUNCH_TEMPLATE_VERSION）
                     </div>
                 </li>
 
                 <li class="endpoint-item">
                     <span class="method">GET</span>
                     <span class="path">/api/terminate-instance</span>
-                    <span class="description">删除指定的实例 (权限: terminate_instance)</span>
+                    <span class="description">删除当前账号下唯一的实例 (权限: terminate_instance)</span>
                     <div style="margin-top: 10px; padding: 10px; background: #edf2f7; border-radius: 5px;">
                         <strong>请求参数：</strong><br>
-                        <code style="color: #2d3748;">instanceId</code> (必需) - 要删除的实例ID
+                        无需参数（系统会自动检查当前账号下的唯一实例）
                     </div>
                 </li>
 
@@ -403,6 +358,16 @@
                     <span class="method">GET</span>
                     <span class="path">/api/instances</span>
                     <span class="description">查询当前账户下的所有实例 (权限: read_instance)</span>
+                    <div style="margin-top: 10px; padding: 10px; background: #edf2f7; border-radius: 5px;">
+                        <strong>请求参数：</strong><br>
+                        无需参数
+                    </div>
+                </li>
+
+                <li class="endpoint-item">
+                    <span class="method">GET</span>
+                    <span class="path">/api/server-status</span>
+                    <span class="description">获取当前 Minecraft 服务器状态 (权限: read_instance)</span>
                     <div style="margin-top: 10px; padding: 10px; background: #edf2f7; border-radius: 5px;">
                         <strong>请求参数：</strong><br>
                         无需参数
@@ -492,7 +457,7 @@
             <h3 style="color: #2d3748; margin: 15px 0;">1. 创建实例</h3>
             <p style="color: #4a5568; margin-bottom: 10px;">通过启动模板创建新的实例</p>
             <div class="code-block">
-                <code>curl -H "Authorization: Bearer admin:password" "<%= baseUrl %>/api/run-instance?templateId=lt-abc123&templateVersion=1"</code>
+                <code>curl -H "Authorization: Bearer admin:password" "<%= baseUrl %>/api/run-instance"</code>
             </div>
             <div style="margin-top: 10px; padding: 10px; background: #edf2f7; border-radius: 5px;">
                 <strong>成功响应示例：</strong>
@@ -512,26 +477,10 @@
                 </div>
             </div>
 
-            <h3 style="color: #2d3748; margin: 25px 0 15px 0;">2. 启动实例</h3>
-            <p style="color: #4a5568; margin-bottom: 10px;">启动已停止的实例</p>
+            <h3 style="color: #2d3748; margin: 25px 0 15px 0;">2. 删除实例</h3>
+            <p style="color: #4a5568; margin-bottom: 10px;">删除当前账号下唯一的实例</p>
             <div class="code-block">
-                <code>curl -H "Authorization: Bearer admin:password" "<%= baseUrl %>/api/start-instance?instanceId=ins-xxxxxxxx"</code>
-            </div>
-            <div style="margin-top: 10px; padding: 10px; background: #edf2f7; border-radius: 5px;">
-                <strong>成功响应示例：</strong>
-                <div class="code-block" style="margin-top: 5px; padding: 10px;">
-                    <code>{
-  "success": true,
-  "message": "实例启动请求已发送",
-  "instanceId": "ins-xxxxxxxx"
-}</code>
-                </div>
-            </div>
-
-            <h3 style="color: #2d3748; margin: 25px 0 15px 0;">3. 删除实例</h3>
-            <p style="color: #4a5568; margin-bottom: 10px;">删除指定的实例</p>
-            <div class="code-block">
-                <code>curl -H "Authorization: Bearer admin:password" "<%= baseUrl %>/api/terminate-instance?instanceId=ins-xxxxxxxx"</code>
+                <code>curl -H "Authorization: Bearer admin:password" "<%= baseUrl %>/api/terminate-instance"</code>
             </div>
             <div style="margin-top: 10px; padding: 10px; background: #edf2f7; border-radius: 5px;">
                 <strong>成功响应示例：</strong>
@@ -544,7 +493,7 @@
                 </div>
             </div>
 
-            <h3 style="color: #2d3748; margin: 25px 0 15px 0;">4. 获取实例列表</h3>
+            <h3 style="color: #2d3748; margin: 25px 0 15px 0;">3. 获取实例列表</h3>
             <p style="color: #4a5568; margin-bottom: 10px;">查询当前账户下的所有实例</p>
             <div class="code-block">
                 <code>curl -H "Authorization: Bearer admin:password" "<%= baseUrl %>/api/instances"</code>
@@ -567,6 +516,28 @@
       "privateIp": "x.x.x.x"
     }
   ]
+}</code>
+                </div>
+            </div>
+
+            <h3 style="color: #2d3748; margin: 25px 0 15px 0;">4. 获取服务器状态</h3>
+            <p style="color: #4a5568; margin-bottom: 10px;">查询 Minecraft 服务器在线状态、端口和玩家信息</p>
+            <div class="code-block">
+                <code>curl -H "Authorization: Bearer admin:password" "<%= baseUrl %>/api/server-status"</code>
+            </div>
+            <div style="margin-top: 10px; padding: 10px; background: #edf2f7; border-radius: 5px;">
+                <strong>成功响应示例：</strong>
+                <div class="code-block" style="margin-top: 5px; padding: 10px;">
+                    <code>{
+  "success": true,
+  "running": true,
+  "mcOnline": true,
+  "ip": "x.x.x.x",
+  "port": 25565,
+  "playersOnline": 2,
+  "playersMax": 20,
+  "version": "1.20.4",
+  "motd": "欢迎来到 MCSpot!"
 }</code>
                 </div>
             </div>
@@ -643,9 +614,7 @@
     </div>
 
     <script>
-        // 设置当前年份
         document.getElementById('current-year').textContent = new Date().getFullYear();
     </script>
-    </div>
 </body>
 </html>
