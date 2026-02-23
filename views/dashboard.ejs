@@ -82,6 +82,16 @@
             font-weight: 600;
         }
 
+        .nav-link.disabled {
+            cursor: not-allowed !important;
+            opacity: 0.5;
+        }
+
+        .nav-link.disabled:hover {
+            background: transparent !important;
+            color: inherit !important;
+        }
+
         .card {
             background: white;
             border-radius: 15px;
@@ -678,14 +688,14 @@
             <div>
                 <a href="/docs" class="nav-link">API 文档</a>
                 <% if (user.permissions && (user.permissions.includes('run_ssh') || user.permissions.includes('admin'))) { %>
-                <a href="/terminal" class="nav-link">终端</a>
+                <a href="/terminal" class="nav-link disabled" id="header-terminal-link" title="实例未启动，无法使用终端">终端</a>
                 <% } %>
             </div>
         </div>
 
         <div class="card">
             <h2 class="section-title">
-                服务器状态
+                实例状态
                 <span id="refresh-indicator" style="display: none;" class="refresh-indicator"></span>
             </h2>
 
@@ -693,13 +703,13 @@
 
             <div id="loading" class="loading-container">
                 <div class="loading-spinner"></div>
-                <p class="loading-text">正在加载服务器信息...</p>
+                <p class="loading-text">正在加载实例信息...</p>
             </div>
 
             <div id="no-instance" class="no-instance" style="display: none;">
-                <p>当前没有运行的Minecraft服务器</p>
+                <p>当前没有运行的Minecraft实例</p>
                 <% if (user.permissions.includes('run_instance') || user.permissions.includes('admin')) { %>
-                <button class="btn btn-primary" onclick="createServer()">创建服务器</button>
+                <button class="btn btn-primary" onclick="createServer()">创建实例</button>
                 <% } %>
             </div>
 
@@ -1014,7 +1024,7 @@
             }
         }
 
-        // 删除服务器
+        // 删除实例
         async function terminateServer() {
             if (!confirm('确定要删除实例吗？手动删除无法自动备份，此操作不可恢复！')) return;
 
@@ -1029,7 +1039,7 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    showMessage('服务器删除成功！', 'success');
+                    showMessage('实例删除成功！', 'success');
                     if (ipPollingInterval) clearInterval(ipPollingInterval);
                     if (mcStatusPollingInterval) clearInterval(mcStatusPollingInterval);
                     setTimeout(() => refreshStatus(), 2000);
@@ -1040,7 +1050,7 @@
                 showMessage('删除失败: ' + error.message, 'error');
             } finally {
                 btn.disabled = false;
-                btn.textContent = '删除服务器';
+                btn.textContent = '删除实例';
             }
         }
 
@@ -1048,7 +1058,7 @@
         function copyServerAddress() {
             const serverAddress = document.getElementById('server-address').textContent;
             if (serverAddress === '-' || serverAddress === '等待分配...') {
-                showMessage('服务器地址尚未分配，请稍后重试', 'warning');
+                showMessage('实例IP尚未分配，请稍后重试', 'warning');
                 return;
             }
 
@@ -1115,6 +1125,11 @@
                     if (data.instances.length === 0) {
                         noInstanceDiv.style.display = 'block';
                         serverInfoDiv.style.display = 'none';
+                        const terminalLink = document.getElementById('header-terminal-link');
+                        if (terminalLink) {
+                            terminalLink.classList.add('disabled');
+                            terminalLink.title = '实例未启动，无法使用终端';
+                        }
                         if (ipPollingInterval) {
                             clearInterval(ipPollingInterval);
                             ipPollingInterval = null;
@@ -1139,12 +1154,27 @@
                         if (instance.instanceState === 'RUNNING') {
                             statusIndicator.className = 'status-indicator running';
                             statusText.textContent = '运行中';
+                            const terminalLink = document.getElementById('header-terminal-link');
+                            if (terminalLink) {
+                                terminalLink.classList.remove('disabled');
+                                terminalLink.title = '';
+                            }
                         } else if (instance.instanceState === 'STOPPED') {
                             statusIndicator.className = 'status-indicator stopped';
                             statusText.textContent = '已停止';
+                            const terminalLink = document.getElementById('header-terminal-link');
+                            if (terminalLink) {
+                                terminalLink.classList.add('disabled');
+                                terminalLink.title = '实例未启动，无法使用终端';
+                            }
                         } else {
                             statusIndicator.className = 'status-indicator pending';
                             statusText.textContent = getStateText(instance.instanceState);
+                            const terminalLink = document.getElementById('header-terminal-link');
+                            if (terminalLink) {
+                                terminalLink.classList.add('disabled');
+                                terminalLink.title = '实例未启动，无法使用终端';
+                            }
                         }
 
                         if (!instance.publicIp || instance.publicIp === null) {
@@ -1219,6 +1249,16 @@
 
         window.addEventListener('load', () => {
             checkAuth();
+            
+            const terminalLink = document.getElementById('header-terminal-link');
+            if (terminalLink) {
+                terminalLink.addEventListener('click', function(e) {
+                    if (this.classList.contains('disabled')) {
+                        e.preventDefault();
+                    }
+                });
+            }
+
             refreshStatus();
             if (USER_PERMISSIONS.includes('admin')) {
                 loadLogs();

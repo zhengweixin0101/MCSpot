@@ -274,8 +274,7 @@
                 <h1>💻 终端</h1>
             </div>
             <div>
-                <a href="/docs" class="nav-link">API 文档</a>
-                <a href="/dashboard" class="nav-link">控制台</a>
+                <a href="/dashboard" class="nav-link">返回控制台</a>
             </div>
         </div>
 
@@ -384,32 +383,49 @@
         // 检查服务器状态
         async function checkServerStatus() {
             try {
-                const response = await fetch('/api/ssh/test', {
-                    method: 'POST',
+                // 检查实例状态
+                const instanceResponse = await fetch('/api/instances', {
                     headers: getAuthHeaders()
                 });
+                const instanceData = await instanceResponse.json();
                 
-                // 如果未授权，直接跳转
-                if (response.status === 401 || response.status === 403) {
-                    window.location.href = '/';
-                    return;
-                }
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    // 只有成功才显示主内容
-                    document.getElementById('main-content').style.display = 'block';
-                    document.getElementById('loading-overlay').style.display = 'none';
-                    loadScripts();
-                    
-                    // 聚焦到命令输入框
-                    const cmdInput = document.getElementById('mc-cmd-input');
-                    if (cmdInput) cmdInput.focus();
+                if (instanceData.success && instanceData.instances && instanceData.instances.length > 0) {
+                    const instance = instanceData.instances[0];
+                    // 实例运行状态，允许进入页面
+                    if (instance.instanceState === 'RUNNING') {
+                        document.getElementById('main-content').style.display = 'block';
+                        document.getElementById('loading-overlay').style.display = 'none';
+                        loadScripts();
+                        
+                        const cmdInput = document.getElementById('mc-cmd-input');
+                        if (cmdInput) cmdInput.focus();
+                        
+                        // 后台尝试 SSH 连接测试
+                        fetch('/api/ssh/test', {
+                            method: 'POST',
+                            headers: getAuthHeaders()
+                        }).then(res => res.json()).then(result => {
+                            if (!result.success) {
+                                console.warn('SSH check warning:', result.message);
+                                const mcLogs = document.getElementById('mc-logs');
+                                if (mcLogs) {
+                                    mcLogs.innerText = `[System] 实例运行中，正在等待 SSH/MC 服务就绪... (${result.message || '连接中'})\n` + mcLogs.innerText;
+                                }
+                            }
+                        }).catch(e => console.error('SSH check error', e));
+                        
+                        return;
+                    } else {
+                        // 实例未运行
+                        alert(`实例未运行 (当前状态: ${instance.instanceState})，即将返回控制台。`);
+                        window.location.href = '/dashboard';
+                        return;
+                    }
                 } else {
-                    // 失败提示并返回
-                    alert('服务器未运行或无法连接，即将返回控制台。\n错误: ' + (result.message || '未知错误'));
+                    // 无实例
+                    alert('未找到运行中的实例，即将返回控制台。');
                     window.location.href = '/dashboard';
+                    return;
                 }
             } catch (err) {
                 document.getElementById('loading-overlay').style.display = 'none';
