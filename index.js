@@ -1,4 +1,7 @@
 const express = require('express');
+const { Client } = require('ssh2');
+const fs = require('fs');
+const path = require('path');
 const tencentcloud = require("tencentcloud-sdk-nodejs");
 const dotenv = require('dotenv');
 const redis = require('redis');
@@ -82,7 +85,12 @@ const AUTH_PASSWORDS = JSON.parse(process.env.AUTH_PASSWORDS || '{}');
 
 // 密码验证中间件
 const authenticate = async (req, res, next) => {
-  const authHeader = req.headers.authorization;
+  let authHeader = req.headers.authorization;
+
+  // 支持从 Query 参数获取 Token (用于 SSE 等无法自定义 Header 的场景)
+  if (!authHeader && req.query.token) {
+    authHeader = 'Bearer ' + req.query.token;
+  }
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({
@@ -472,6 +480,456 @@ app.get('/api/terminate-instance', authenticate, checkPermission('terminate_inst
   }
 });
 
+// 辅助函数：获取 SSH 连接配置
+async function getSshConfig(requestId, clientIp, userId) {
+  // 获取当前实例公网 IP
+  const instanceResult = await describeInstancesList();
+  if (!instanceResult.success) {
+    throw new Error(`获取实例信息失败: ${instanceResult.error}`);
+  }
+
+  if (instanceResult.instances.length === 0) {
+    throw new Error('当前没有运行的实例，无法执行脚本');
+  }
+
+  const instance = instanceResult.instances[0];
+  let publicIp = null;
+
+  if (instance.PublicIpAddresses && instance.PublicIpAddresses.length > 0) {
+    publicIp = instance.PublicIpAddresses[0];
+  } else if (instance.PublicIpAddress && instance.PublicIpAddress.length > 0) {
+    publicIp = instance.PublicIpAddress[0];
+  }
+
+  if (!publicIp) {
+    throw new Error('实例未分配公网 IP，无法连接');
+  }
+
+  const config = {
+    host: publicIp,
+    port: parseInt(process.env.SSH_PORT || '22'),
+    username: process.env.SSH_USERNAME || 'root',
+    readyTimeout: 10000 // 10秒超时
+  };
+
+  try {
+    if (process.env.SSH_PRIVATE_KEY) {
+      config.privateKey = process.env.SSH_PRIVATE_KEY.replace(/\\n/g, '\n');
+    } else if (process.env.SSH_PRIVATE_KEY_PATH) {
+      config.privateKey = fs.readFileSync(process.env.SSH_PRIVATE_KEY_PATH);
+    } else if (process.env.SSH_PASSWORD) {
+      config.password = process.env.SSH_PASSWORD;
+    } else {
+      throw new Error('SSH 认证信息未配置');
+    }
+  } catch (err) {
+    throw new Error('读取 SSH 私钥失败: ' + err.message);
+  }
+
+  return { config, publicIp };
+}
+
+// 获取脚本列表
+app.get('/api/scripts', authenticate, checkPermission('run_ssh'), async (req, res) => {
+  const requestId = req.auth.requestId;
+  const clientIp = getClientIp(req);
+  const remotePath = process.env.REMOTE_SCRIPT_PATH || '/root/sh';
+
+  try {
+    const { config } = await getSshConfig(requestId, clientIp, req.auth.userId);
+    const conn = new Client();
+
+    conn.on('ready', () => {
+      conn.exec(`ls -1 ${remotePath}/*.sh`, (err, stream) => {
+        if (err) {
+          conn.end();
+          return res.status(500).json({ success: false, message: '列出脚本失败', error: err.message });
+        }
+
+        let output = '';
+        stream.on('close', (code, signal) => {
+          conn.end();
+          if (code !== 0) {
+             // ls 返回非0可能是因为目录为空或不存在，我们返回空列表而不是报错
+             return res.json({ success: true, scripts: [] });
+          }
+          const files = output.trim().split('\n')
+            .map(line => path.basename(line.trim()))
+            .filter(name => name && name.endsWith('.sh'));
+          res.json({ success: true, scripts: files });
+        }).on('data', (data) => {
+          output += data.toString();
+        }).stderr.on('data', (data) => {
+          // ignore stderr
+        });
+      });
+    }).on('error', (err) => {
+      res.status(500).json({ success: false, message: 'SSH 连接失败', error: err.message });
+    }).connect(config);
+
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// 执行脚本
+app.post('/api/scripts/:scriptName/exec', authenticate, checkPermission('run_ssh'), async (req, res) => {
+  const scriptName = req.params.scriptName;
+  const clientIp = getClientIp(req);
+  const requestId = req.auth.requestId;
+  const remotePath = process.env.REMOTE_SCRIPT_PATH || '/root/sh';
+
+  // 安全检查：防止路径遍历
+  if (scriptName.includes('..') || scriptName.includes('/') || scriptName.includes('\\')) {
+    await logOperation(requestId, 'EXEC_SCRIPT_FAILED', clientIp, req.auth.userId, `无效的脚本名称: ${scriptName}`);
+    return res.status(400).json({ success: false, message: '无效的脚本名称' });
+  }
+
+  await logOperation(requestId, 'EXEC_SCRIPT', clientIp, req.auth.userId, `执行脚本请求: ${scriptName}`);
+
+  try {
+    const { config, publicIp } = await getSshConfig(requestId, clientIp, req.auth.userId);
+    const conn = new Client();
+    
+    // 构建远程命令：直接执行远程脚本
+    const remoteCommand = `bash ${remotePath}/${scriptName}`;
+
+    conn.on('ready', () => {
+      conn.exec(remoteCommand, (err, stream) => {
+        if (err) {
+          conn.end();
+          logOperation(requestId, 'EXEC_SCRIPT_ERROR', clientIp, req.auth.userId, `SSH 执行错误: ${err.message}`);
+          return res.status(500).json({ success: false, message: 'SSH 执行错误', error: err.message });
+        }
+
+        let output = '';
+        let errorOutput = '';
+
+        stream.on('close', (code, signal) => {
+          conn.end();
+          const success = code === 0;
+          
+          logOperation(requestId, success ? 'EXEC_SCRIPT_SUCCESS' : 'EXEC_SCRIPT_FAILED', clientIp, req.auth.userId, 
+            `脚本 ${scriptName} 执行完成 (Code: ${code})`);
+
+          res.json({
+            success,
+            message: success ? '脚本执行成功' : '脚本执行失败',
+            output: output,
+            error: errorOutput,
+            code
+          });
+        }).on('data', (data) => {
+          output += data.toString();
+        }).stderr.on('data', (data) => {
+          errorOutput += data.toString();
+        });
+      });
+    }).on('error', (err) => {
+      logOperation(requestId, 'EXEC_SCRIPT_ERROR', clientIp, req.auth.userId, `SSH 连接错误: ${err.message}`);
+      if (!res.headersSent) {
+        res.status(500).json({ success: false, message: 'SSH 连接失败', error: err.message });
+      }
+    }).connect(config);
+
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// 测试 SSH 连接
+app.post('/api/ssh/test', authenticate, checkPermission('run_ssh'), async (req, res) => {
+  const clientIp = getClientIp(req);
+  const requestId = req.auth.requestId;
+
+  // 获取当前实例公网 IP
+  const instanceResult = await describeInstancesList();
+  if (!instanceResult.success) {
+    return res.status(500).json({ success: false, message: '获取实例信息失败', error: instanceResult.error });
+  }
+
+  if (instanceResult.instances.length === 0) {
+    return res.status(404).json({ success: false, message: '当前没有运行的实例，无法测试连接' });
+  }
+
+  const instance = instanceResult.instances[0];
+  let publicIp = null;
+
+  if (instance.PublicIpAddresses && instance.PublicIpAddresses.length > 0) {
+    publicIp = instance.PublicIpAddresses[0];
+  } else if (instance.PublicIpAddress && instance.PublicIpAddress.length > 0) {
+    publicIp = instance.PublicIpAddress[0];
+  }
+
+  if (!publicIp) {
+    return res.status(500).json({ success: false, message: '实例未分配公网 IP，无法连接' });
+  }
+
+  const conn = new Client();
+  const config = {
+    host: publicIp,
+    port: parseInt(process.env.SSH_PORT || '22'),
+    username: process.env.SSH_USERNAME || 'root',
+    readyTimeout: 10000 // 10秒超时
+  };
+
+  try {
+    if (process.env.SSH_PRIVATE_KEY) {
+      // 处理环境变量中的换行符
+      config.privateKey = process.env.SSH_PRIVATE_KEY.replace(/\\n/g, '\n');
+    } else if (process.env.SSH_PRIVATE_KEY_PATH) {
+      config.privateKey = fs.readFileSync(process.env.SSH_PRIVATE_KEY_PATH);
+    } else if (process.env.SSH_PASSWORD) {
+      config.password = process.env.SSH_PASSWORD;
+    } else {
+      return res.status(500).json({ success: false, message: 'SSH 认证信息未配置' });
+    }
+  } catch (err) {
+    return res.status(500).json({ success: false, message: '读取 SSH 私钥失败: ' + err.message });
+  }
+
+  conn.on('ready', () => {
+    conn.exec('echo "SSH Connection OK" && uptime', (err, stream) => {
+      if (err) {
+        conn.end();
+        return res.status(500).json({ success: false, message: 'SSH 连接成功但执行测试命令失败', error: err.message });
+      }
+
+      let output = '';
+      stream.on('close', (code, signal) => {
+        conn.end();
+        res.json({
+          success: true,
+          message: 'SSH 连接测试成功',
+          output: output.trim(),
+          ip: publicIp
+        });
+      }).on('data', (data) => {
+        output += data.toString();
+      }).stderr.on('data', (data) => {
+        // 忽略 stderr
+      });
+    });
+  }).on('error', (err) => {
+    if (!res.headersSent) {
+      res.status(500).json({ success: false, message: 'SSH 连接失败', error: err.message });
+    }
+  }).connect(config);
+});
+
+// 手动执行 SSH 命令
+app.post('/api/ssh/command', authenticate, checkPermission('run_ssh'), async (req, res) => {
+  const { command } = req.body;
+  const clientIp = getClientIp(req);
+  const requestId = req.auth.requestId;
+
+  if (!command || typeof command !== 'string' || command.trim().length === 0) {
+    return res.status(400).json({ success: false, message: '命令不能为空' });
+  }
+
+  await logOperation(requestId, 'EXEC_COMMAND', clientIp, req.auth.userId, `执行命令: ${command}`);
+
+  try {
+    const { config } = await getSshConfig(requestId, clientIp, req.auth.userId);
+    const conn = new Client();
+
+    conn.on('ready', () => {
+      conn.exec(command, (err, stream) => {
+        if (err) {
+          conn.end();
+          logOperation(requestId, 'EXEC_COMMAND_ERROR', clientIp, req.auth.userId, `SSH 执行错误: ${err.message}`);
+          return res.status(500).json({ success: false, message: 'SSH 执行错误', error: err.message });
+        }
+
+        let output = '';
+        let errorOutput = '';
+
+        stream.on('close', (code, signal) => {
+          conn.end();
+          const success = code === 0;
+          
+          logOperation(requestId, success ? 'EXEC_COMMAND_SUCCESS' : 'EXEC_COMMAND_FAILED', clientIp, req.auth.userId, 
+            `命令执行完成 (Code: ${code})`);
+
+          res.json({
+            success,
+            message: success ? '执行成功' : '执行失败',
+            output: output,
+            error: errorOutput,
+            code
+          });
+        }).on('data', (data) => {
+          output += data.toString();
+        }).stderr.on('data', (data) => {
+          errorOutput += data.toString();
+        });
+      });
+    }).on('error', (err) => {
+      logOperation(requestId, 'EXEC_COMMAND_ERROR', clientIp, req.auth.userId, `SSH 连接错误: ${err.message}`);
+      if (!res.headersSent) {
+        res.status(500).json({ success: false, message: 'SSH 连接失败', error: err.message });
+      }
+    }).connect(config);
+
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// 发送 MC 服务器命令
+app.post('/api/mc/command', authenticate, checkPermission('run_ssh'), async (req, res) => {
+  const { command } = req.body;
+  const clientIp = getClientIp(req);
+  const requestId = req.auth.requestId;
+
+  if (!command || typeof command !== 'string' || command.trim().length === 0) {
+    return res.status(400).json({ success: false, message: '命令不能为空' });
+  }
+
+  // 简单的命令清理，防止注入
+  const safeCommand = command.replace(/"/g, '\\"');
+
+  await logOperation(requestId, 'EXEC_MC_COMMAND', clientIp, req.auth.userId, `执行 MC 命令: ${command}`);
+
+  try {
+    const { config } = await getSshConfig(requestId, clientIp, req.auth.userId);
+    const conn = new Client();
+
+    conn.on('ready', () => {
+      // 从 .env 加载配置并发送命令到 screen 会话
+      const cmd = `source /opt/.env && screen -S "$SCREEN_NAME" -p 0 -X stuff "${safeCommand}\\r"`;
+      
+      conn.exec(cmd, (err, stream) => {
+        if (err) {
+          conn.end();
+          return res.status(500).json({ success: false, message: 'SSH 执行错误', error: err.message });
+        }
+
+        stream.on('close', (code, signal) => {
+          conn.end();
+          const success = code === 0;
+          res.json({ success, message: success ? '命令已发送' : '命令发送失败', code });
+        }).on('data', () => {}).stderr.on('data', () => {});
+      });
+    }).on('error', (err) => {
+      if (!res.headersSent) {
+        res.status(500).json({ success: false, message: 'SSH 连接失败', error: err.message });
+      }
+    }).connect(config);
+
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// 获取 MC 服务器日志 (支持流式输出)
+app.get('/api/mc/logs', authenticate, checkPermission('run_ssh'), async (req, res) => {
+  const clientIp = getClientIp(req);
+  const requestId = req.auth.requestId;
+  const lines = parseInt(req.query.lines) || 100;
+  const isStream = req.query.stream === 'true';
+
+  try {
+    const { config } = await getSshConfig(requestId, clientIp, req.auth.userId);
+    const conn = new Client();
+
+    // 如果是流式请求，设置 SSE 头部
+    if (isStream) {
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+      res.flushHeaders();
+    }
+
+    conn.on('ready', () => {
+      // 构造命令
+      let cmd;
+      if (isStream) {
+        // 流式：先输出最后 N 行，然后持续跟踪
+        // 使用 tail -f -n N
+        cmd = `source /opt/.env && tail -f -n ${lines} "$MCS_DIR/logs/latest.log"`;
+      } else {
+        // 非流式：只输出最后 N 行
+        cmd = `source /opt/.env && tail -n ${lines} "$MCS_DIR/logs/latest.log"`;
+      }
+      
+      conn.exec(cmd, (err, stream) => {
+        if (err) {
+          conn.end();
+          if (isStream) {
+            res.write(`event: error\ndata: ${JSON.stringify({ message: 'SSH 执行错误', error: err.message })}\n\n`);
+            res.end();
+          } else {
+            return res.status(500).json({ success: false, message: 'SSH 执行错误', error: err.message });
+          }
+          return;
+        }
+
+        let output = '';
+        let errorOutput = '';
+
+        stream.on('close', (code, signal) => {
+          conn.end();
+          if (!isStream) {
+            if (code === 0) {
+              res.json({ success: true, logs: output });
+            } else {
+              res.status(500).json({ success: false, message: '读取日志失败', error: errorOutput });
+            }
+          } else {
+            res.end(); // 关闭 SSE 连接
+          }
+        }).on('data', (data) => {
+          if (isStream) {
+            // 将数据分行处理，逐行发送
+            const lines = data.toString().split('\n');
+            lines.forEach(line => {
+              if (line) {
+                 res.write(`data: ${JSON.stringify({ log: line })}\n\n`);
+              }
+            });
+          } else {
+            output += data.toString();
+          }
+        }).stderr.on('data', (data) => {
+           if (isStream) {
+             // 错误流也发送到前端显示
+             res.write(`event: stderr\ndata: ${JSON.stringify({ log: data.toString() })}\n\n`);
+           } else {
+             errorOutput += data.toString();
+           }
+        });
+
+        // 客户端断开连接时，关闭 SSH 连接
+        if (isStream) {
+          req.on('close', () => {
+             console.log('Client closed SSE connection, closing SSH...');
+             conn.end();
+          });
+        }
+      });
+    }).on('error', (err) => {
+      if (!res.headersSent) {
+         if (isStream) {
+             // 还没发送头部，发送 JSON 错误
+             res.status(500).json({ success: false, message: 'SSH 连接失败', error: err.message });
+         } else {
+             res.status(500).json({ success: false, message: 'SSH 连接失败', error: err.message });
+         }
+      } else if (isStream) {
+          // 已经发送头部，发送 SSE 错误事件
+          res.write(`event: error\ndata: ${JSON.stringify({ message: 'SSH 连接中断', error: err.message })}\n\n`);
+          res.end();
+      }
+    }).connect(config);
+
+  } catch (err) {
+    if (!res.headersSent) {
+      res.status(500).json({ success: false, message: err.message });
+    }
+  }
+});
+
 // GET 请求接口 - 获取实例列表
 app.get('/api/instances', authenticate, checkPermission('read_instance'), async (req, res) => {
   const result = await describeInstancesList();
@@ -558,7 +1016,7 @@ app.get('/api/user-info', authenticate, async (req, res) => {
 });
 
 // 获取 Minecraft 服务器状态
-app.get('/api/server-status', authenticate, checkPermission('read_instance'), async (req, res) => {
+app.get('/api/mc/status', authenticate, checkPermission('read_instance'), async (req, res) => {
   try {
     // 获取当前实例
     const result = await describeInstancesList();
@@ -693,6 +1151,20 @@ app.get('/dashboard', webAuth, (req, res) => {
     }
   });
 });
+
+// 终端页面
+app.get('/terminal', webAuth, (req, res) => {
+  // 简单权限检查，如果没有权限则重定向回 dashboard
+  if (!req.auth.permissions.includes('run_ssh') && !req.auth.permissions.includes('admin')) {
+     return res.redirect('/dashboard');
+  }
+
+  res.render('terminal', {
+    title: '终端 - MCSpot',
+    user: req.auth
+  });
+});
+
 
 // API文档页面
 app.get('/docs', webAuth, (req, res) => {

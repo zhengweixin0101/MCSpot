@@ -59,7 +59,7 @@
             font-size: 1.5em;
         }
 
-        .docs-link {
+        .nav-link {
             color: #4a5568;
             text-decoration: none;
             font-size: 0.95em;
@@ -70,10 +70,16 @@
             background: transparent;
         }
 
-        .docs-link:hover {
+        .nav-link:hover {
             color: #2d3748;
             background: #e6e6e6;
             text-decoration: none;
+        }
+
+        .nav-link.active {
+            background: #edf2f7;
+            color: #2d3748;
+            font-weight: 600;
         }
 
         .card {
@@ -669,7 +675,12 @@
             <div class="logo">
                 <h1>🎮 控制台</h1>
             </div>
-            <a href="/docs" class="docs-link">API 文档</a>
+            <div>
+                <a href="/docs" class="nav-link">API 文档</a>
+                <% if (user.permissions && (user.permissions.includes('run_ssh') || user.permissions.includes('admin'))) { %>
+                <a href="/terminal" class="nav-link">终端</a>
+                <% } %>
+            </div>
         </div>
 
         <div class="card">
@@ -895,7 +906,7 @@
                 return;
             }
 
-            const url = '/api/server-status';
+            const url = '/api/mc/status';
 
             try {
                 const response = await fetch(url, {

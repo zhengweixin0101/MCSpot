@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>终端 - MCSpot</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* 全局细滚动条样式 */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e0;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a0aec0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f7fa;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 15px;
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo h1 {
+            color: #2d3748;
+            font-size: 1.5em;
+        }
+
+        .nav-link {
+            color: #4a5568;
+            text-decoration: none;
+            font-size: 0.95em;
+            font-weight: 500;
+            padding: 6px 12px;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+            background: transparent;
+        }
+
+        .nav-link:hover {
+            color: #2d3748;
+            background: #e6e6e6;
+            text-decoration: none;
+        }
+        
+        .nav-link.active {
+            background: #edf2f7;
+            color: #2d3748;
+            font-weight: 600;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .section-title {
+            color: #2d3748;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            font-size: 1.25em;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn:disabled {
+            background: #cbd5e0;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-primary,
+        .btn-secondary {
+            background: #2d3748;
+            color: white;
+        }
+        
+        .btn-secondary {
+            background: #4a5568;
+        }
+
+        .btn-primary:hover,
+        .btn-secondary:hover {
+            background: #1a202c;
+        }
+        
+        .error-text {
+            color: #e53e3e;
+        }
+
+        /* 终端 UI 样式 */
+        .terminal-container {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 14px;
+            height: 400px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border: 1px solid #333;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+        }
+
+        .terminal-output {
+            flex: 1;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            margin-bottom: 10px;
+        }
+
+        .terminal-input-line {
+            display: flex;
+            align-items: center;
+        }
+
+        .terminal-prompt {
+            color: #10b981;
+            margin-right: 8px;
+            font-weight: bold;
+        }
+
+        .terminal-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: #d4d4d4;
+            font-family: inherit;
+            font-size: inherit;
+            outline: none;
+        }
+        
+        .loading-container {
+            padding: 100px 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            width: 100%;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #e2e8f0;
+            border-top-color: #2d3748;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .loading-text {
+            font-size: 1.2em;
+            color: #2d3748;
+            margin-top: 15px;
+            font-weight: 500;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+
+            .logo h1 {
+                font-size: 1.2em;
+            }
+
+            .card {
+                padding: 20px;
+                margin-bottom: 20px;
+                border-radius: 12px;
+            }
+            
+            .btn {
+                padding: 10px 16px;
+                font-size: 0.9em;
+            }
+        }
+        
+        .footer {
+            text-align: center;
+            color: #718096;
+            padding: 20px;
+            font-size: 0.9em;
+            line-height: 1.6;
+        }
+
+        .footer a {
+            color: #4a5568;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .footer a:hover {
+            color: #2d3748;
+            text-decoration: none;
+        }
+
+        .footer-links {
+            margin-top: 10px;
+        }
+
+        .footer-links a {
+            margin: 0 10px;
+            font-size: 0.85em;
+            color: #a0aec0;
+        }
+
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">
+                <h1>💻 终端</h1>
+            </div>
+            <div>
+                <a href="/docs" class="nav-link">API 文档</a>
+                <a href="/dashboard" class="nav-link">控制台</a>
+            </div>
+        </div>
+
+        <div id="loading-overlay" class="loading-container">
+            <div class="loading-spinner"></div>
+            <p class="loading-text" id="loading-text">正在检查服务器状态...</p>
+        </div>
+
+        <div id="main-content" style="display: none;">
+            
+            <div class="card">
+            <h2 class="section-title">Minecraft 服务端控制台</h2>
+            <div class="terminal-container" style="height: 500px;">
+                <div id="mc-logs" class="terminal-output" style="font-size: 13px; line-height: 1.4;">正在连接服务器获取日志...</div>
+                <div class="terminal-input-line" style="border-top: 1px solid #333; padding-top: 10px;">
+                    <span class="terminal-prompt">/></span>
+                    <input type="text" id="mc-cmd-input" class="terminal-input" placeholder="输入服务端命令 (例如: say hello, list, stop)" autocomplete="off">
+                </div>
+            </div>
+            <div style="margin-top: 10px; display: flex; justify-content: flex-end; align-items: center; gap: 15px;">
+                 <label style="font-size: 0.9em; color: #4a5568; cursor: pointer; display: flex; align-items: center;">
+                    <input type="checkbox" id="auto-scroll" checked style="margin-right: 5px;"> 自动滚动
+                </label>
+                 <label style="font-size: 0.9em; color: #4a5568; cursor: pointer; display: flex; align-items: center;">
+                    <input type="checkbox" id="auto-refresh" checked style="margin-right: 5px;"> 实时日志
+                </label>
+                <button class="btn btn-secondary" onclick="fetchLogs()" style="padding: 6px 12px; font-size: 0.9em;">重连</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2 class="section-title">
+                快捷脚本
+                <button class="btn btn-secondary" onclick="testSshConnection()" style="float: right; font-size: 0.75em; padding: 6px 12px;">测试</button>
+            </h2>
+            <div id="scripts-container">
+                <p>加载中...</p>
+            </div>
+            <div id="script-output" style="display: none; margin-top: 15px; padding: 15px; background: #2d3748; color: #fff; border-radius: 8px; font-family: monospace; white-space: pre-wrap; max-height: 300px; overflow-y: auto;"></div>
+        </div>
+
+        </div>
+
+        <div class="footer">
+            <p>MCSpot - 基于腾讯云 API 的 Minecraft 服务器按需启动工具</p>
+            <p style="margin-top: 8px; color: #a0aec0; font-size: 0.875rem;">
+                © <span id="current-year"></span> <a href="https://zhengweixin.top" target="_blank" rel="noopener" style="color: #a0aec0; text-decoration: underline;">ShinX</a>. All rights reserved.
+            </p>
+            <div class="footer-links">
+                <a href="/docs">API 文档</a>
+                <a href="https://zhengweixin.top" target="_blank" rel="noopener">My Blog</a>
+                <a href="https://github.com/zhengweixin0101/MCSpot" target="_blank" rel="noopener">GitHub</a>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        // 设置当前年份
+        document.getElementById('current-year').textContent = new Date().getFullYear();
+
+        // 用户权限
+        const USER_PERMISSIONS = <%- JSON.stringify(user ? user.permissions : []) %>;
+
+        // 获取cookie的辅助函数
+        function getCookie(name) {
+            const value = '; ' + document.cookie;
+            const parts = value.split('; ' + name + '=');
+            if (parts.length === 2) {
+                const cookieValue = parts.pop().split(';').shift();
+                return decodeURIComponent(cookieValue);
+            }
+            return '';
+        }
+
+        // 获取认证密码
+        function getAuthPassword() {
+            return getCookie('auth_password');
+        }
+
+        // 获取认证头
+        function getAuthHeaders() {
+            const username = getCookie('auth_username');
+            const password = getAuthPassword();
+
+            if (!username || !password) {
+                window.location.href = '/';
+                return {};
+            }
+
+            return {
+                'Authorization': 'Bearer ' + username + ':' + password,
+                'Content-Type': 'application/json'
+            };
+        }
+
+        // 检查登录状态
+        function checkAuth() {
+            if (!getCookie('auth_password') || !getCookie('auth_username')) {
+                window.location.href = '/';
+            }
+        }
+        
+        // 检查服务器状态
+        async function checkServerStatus() {
+            try {
+                const response = await fetch('/api/ssh/test', {
+                    method: 'POST',
+                    headers: getAuthHeaders()
+                });
+                
+                // 如果未授权，直接跳转
+                if (response.status === 401 || response.status === 403) {
+                    window.location.href = '/';
+                    return;
+                }
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    // 只有成功才显示主内容
+                    document.getElementById('main-content').style.display = 'block';
+                    document.getElementById('loading-overlay').style.display = 'none';
+                    loadScripts();
+                    
+                    // 聚焦到命令输入框
+                    const cmdInput = document.getElementById('mc-cmd-input');
+                    if (cmdInput) cmdInput.focus();
+                } else {
+                    // 失败提示并返回
+                    alert('服务器未运行或无法连接，即将返回控制台。\n错误: ' + (result.message || '未知错误'));
+                    window.location.href = '/dashboard';
+                }
+            } catch (err) {
+                document.getElementById('loading-overlay').style.display = 'none';
+                alert('连接检测出错，即将返回控制台。\n错误: ' + err.message);
+                window.location.href = '/dashboard';
+            }
+        }
+
+        // 加载脚本列表
+        async function loadScripts() {
+            const container = document.getElementById('scripts-container');
+            if (!container) return;
+            
+            try {
+                const response = await fetch('/api/scripts', {
+                    headers: getAuthHeaders()
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    if (data.scripts.length === 0) {
+                        container.innerHTML = '<p>没有可用的脚本</p>';
+                        return;
+                    }
+                    
+                    let html = '<div style="display: flex; flex-wrap: wrap; gap: 10px;">';
+                    data.scripts.forEach(script => {
+                        html += `
+                            <button class="btn btn-secondary" onclick="executeScript('${script}')">
+                                ${script}
+                            </button>
+                        `;
+                    });
+                    html += '</div>';
+                    container.innerHTML = html;
+                } else {
+                    container.innerHTML = `<p class="error-text">加载失败: ${data.message}</p>`;
+                }
+            } catch (err) {
+                container.innerHTML = `<p class="error-text">加载错误: ${err.message}</p>`;
+            }
+        }
+
+        // 测试 SSH 连接
+        async function testSshConnection() {
+            const btn = event.target;
+            const originalText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = '测试中...';
+
+            const outputDiv = document.getElementById('script-output');
+            outputDiv.style.display = 'block';
+            outputDiv.textContent = '正在测试 SSH 连接...';
+
+            try {
+                const response = await fetch('/api/ssh/test', {
+                    method: 'POST',
+                    headers: getAuthHeaders()
+                });
+                const result = await response.json();
+
+                let output = `[${new Date().toLocaleTimeString()}] SSH 连接测试 ${result.success ? '成功' : '失败'}\n`;
+                if (result.ip) output += `连接 IP: ${result.ip}\n`;
+                output += '----------------------------------------\n';
+                if (result.output) output += result.output;
+                if (result.error) output += '\n[ERROR]\n' + result.error;
+
+                outputDiv.textContent = output;
+            } catch (err) {
+                outputDiv.textContent = `测试出错: ${err.message}`;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+        }
+
+        // 执行脚本
+        async function executeScript(scriptName) {
+            if (!confirm(`确定要执行脚本 ${scriptName} 吗？`)) return;
+            
+            const outputDiv = document.getElementById('script-output');
+            outputDiv.style.display = 'block';
+            outputDiv.textContent = `正在执行 ${scriptName} ...`;
+            
+            try {
+                const response = await fetch(`/api/scripts/${scriptName}/exec`, {
+                    method: 'POST',
+                    headers: getAuthHeaders()
+                });
+                const result = await response.json();
+                
+                let output = `[${new Date().toLocaleTimeString()}] 执行 ${scriptName} ${result.success ? '成功' : '失败'}\n`;
+                output += '----------------------------------------\n';
+                if (result.output) output += result.output;
+                if (result.error) output += '\n[ERROR]\n' + result.error;
+                
+                outputDiv.textContent = output;
+            } catch (err) {
+                outputDiv.textContent = `执行出错: ${err.message}`;
+            }
+        }
+        
+        // MC 控制台逻辑
+        const mcLogsOutput = document.getElementById('mc-logs');
+        const mcCmdInput = document.getElementById('mc-cmd-input');
+        const autoScrollCheckbox = document.getElementById('auto-scroll');
+        const autoRefreshCheckbox = document.getElementById('auto-refresh'); // 现在控制 SSE 连接
+        let eventSource = null;
+        let retryTimeout = null;
+
+        // 启动日志流 (SSE)
+        function startLogStream() {
+            if (eventSource) {
+                eventSource.close();
+                eventSource = null;
+            }
+            
+            if (!autoRefreshCheckbox.checked) {
+                mcLogsOutput.innerText += '\n[System] 实时日志已暂停\n';
+                return;
+            }
+
+            // 获取 token
+            const password = getAuthPassword();
+            const username = getCookie('auth_username');
+            // 注意：token 应该是 username:password 的 base64 或者直接传，这里为了简单直接传 raw
+            // 但我们的中间件只接受 username:password，所以这里直接拼接
+            const token = username + ':' + password;
+
+            const url = `/api/mc/logs?stream=true&lines=100&token=${encodeURIComponent(token)}`;
+            
+            mcLogsOutput.innerText = '[System] 正在连接实时日志流...\n';
+            
+            eventSource = new EventSource(url);
+
+            eventSource.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data.log) {
+                        mcLogsOutput.innerText += data.log + '\n';
+                        if (autoScrollCheckbox.checked) {
+                            mcLogsOutput.scrollTop = mcLogsOutput.scrollHeight;
+                        }
+                    }
+                } catch (e) {
+                    console.error('Parse error', e);
+                }
+            };
+
+            eventSource.addEventListener('stderr', (event) => {
+                 try {
+                    const data = JSON.parse(event.data);
+                    if (data.log) {
+                        mcLogsOutput.innerText += '[STDERR] ' + data.log + '\n';
+                         if (autoScrollCheckbox.checked) {
+                            mcLogsOutput.scrollTop = mcLogsOutput.scrollHeight;
+                        }
+                    }
+                } catch (e) {
+                    console.error('Parse error', e);
+                }
+            });
+
+            eventSource.addEventListener('error', (event) => {
+                if (event.data) {
+                    try {
+                        const data = JSON.parse(event.data);
+                         mcLogsOutput.innerText += `\n[System] Error: ${data.message || 'Unknown error'}\n`;
+                    } catch(e) {}
+                } else {
+                     // 可能是网络错误或连接中断
+                     console.log('SSE connection lost, retrying in 5s...');
+                }
+                eventSource.close();
+                
+                // 自动重连
+                if (autoRefreshCheckbox.checked) {
+                     if (retryTimeout) clearTimeout(retryTimeout);
+                     retryTimeout = setTimeout(startLogStream, 5000);
+                }
+            });
+            
+            eventSource.onopen = () => {
+                mcLogsOutput.innerText = ''; // 清空旧日志，因为服务器会重新发送最后100行
+                console.log('SSE connected');
+            };
+        }
+
+        // 监听复选框变化
+        autoRefreshCheckbox.addEventListener('change', () => {
+            if (autoRefreshCheckbox.checked) {
+                startLogStream();
+            } else {
+                if (eventSource) {
+                    eventSource.close();
+                    eventSource = null;
+                }
+                if (retryTimeout) clearTimeout(retryTimeout);
+                mcLogsOutput.innerText += '\n[System] 实时日志已暂停\n';
+            }
+        });
+
+        // 手动刷新（现在作为重连按钮）
+        function fetchLogs() {
+             startLogStream();
+        }
+
+        // 发送命令
+        mcCmdInput.addEventListener('keydown', async (e) => {
+            if (e.key === 'Enter') {
+                const command = mcCmdInput.value.trim();
+                if (!command) return;
+                
+                const originalValue = mcCmdInput.value;
+                mcCmdInput.value = ''; // 清空输入框
+                mcCmdInput.disabled = true;
+                mcCmdInput.placeholder = '发送中...';
+
+                try {
+                    const response = await fetch('/api/mc/command', {
+                        method: 'POST',
+                        headers: getAuthHeaders(),
+                        body: JSON.stringify({ command })
+                    });
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        // 成功发送，日志会自动通过 SSE 过来，不需要手动刷新
+                    } else {
+                        mcCmdInput.value = originalValue; // 恢复输入
+                        alert('命令发送失败: ' + (result.message || '未知错误'));
+                    }
+                } catch (err) {
+                    mcCmdInput.value = originalValue;
+                    alert('发送出错: ' + err.message);
+                } finally {
+                    mcCmdInput.disabled = false;
+                    mcCmdInput.placeholder = '输入服务端命令 (例如: say hello, list, stop)';
+                    mcCmdInput.focus();
+                }
+            }
+        });
+
+        window.addEventListener('load', () => {
+            checkAuth();
+            checkServerStatus().then(() => {
+                startLogStream();
+            });
+        });
+        
+        // 页面卸载时关闭连接
+        window.addEventListener('beforeunload', () => {
+            if (eventSource) eventSource.close();
+        });
+    </script>
+</body>
+</html>

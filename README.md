@@ -24,6 +24,17 @@ MCSpot 是一个基于腾讯云 API 的 Minecraft 服务器按需启动系统。
 - [环境配置](#环境配置)
 - [认证说明](#认证说明)
 - [API 接口](#api-接口)
+  - [1. 创建实例](#1-创建实例)
+  - [2. 删除实例](#2-删除实例)
+  - [3. 获取实例列表](#3-获取实例列表)
+  - [4. 获取操作日志](#4-获取操作日志)
+  - [5. 获取用户信息](#5-获取用户信息)
+  - [6. 健康检查](#6-健康检查)
+  - [7. 获取服务器状态](#7-获取服务器状态)
+  - [8. 获取实时日志](#8-获取实时日志)
+  - [9. 发送命令](#9-发送命令)
+  - [10. 脚本管理](#10-脚本管理)
+  - [11. SSH 连接测试](#11-ssh-连接测试)
 - [使用示例](#使用示例)
 - [错误排查](#错误排查)
 - [技术栈](#技术栈)
@@ -206,6 +217,7 @@ curl -H "Authorization: Bearer admin:Admin@abc123456!" http://localhost:3000/api
 | `run_instance` | 创建实例 | 创建新的 CVM 实例 |
 | `terminate_instance` | 删除实例 | 删除 CVM 实例 |
 | `read_instance` | 读取实例信息 | 查询实例列表、服务器状态和 IP 地址 |
+| `run_ssh` | 运行 SSH | 执行远程脚本、发送 MC 命令、查看实时日志 |
 
 **注意**：`admin` 权限拥有所有权限，无需额外配置其他权限。
 
@@ -432,7 +444,7 @@ GET /health
 
 **请求**
 ```
-GET /api/server-status
+GET /api/mc/status
 ```
 
 **权限**: `read_instance`
@@ -451,8 +463,153 @@ GET /api/server-status
   "port": 25565,
   "playersOnline": 2,
   "playersMax": 20,
+  "playerList": [
+    { "name": "Steve", "uuid": "..." }
+  ],
   "version": "1.20.4",
   "motd": "欢迎来到 MCSpot!"
+}
+```
+
+---
+
+### 8. 获取实时日志
+
+获取 Minecraft 服务器的实时日志（支持 SSE 流式传输）。
+
+**请求**
+```
+GET /api/mc/logs
+```
+
+**权限**: `run_ssh`
+
+**参数**
+
+| 参数 | 类型 | 必需 | 说明 |
+|------|------|------|------|
+| `lines` | number | 否 | 返回最近日志行数，默认 100 |
+| `stream` | boolean | 否 | 是否开启 SSE 流式传输，默认 false |
+
+**响应示例**
+
+✅ 普通模式（JSON）：
+```json
+{
+  "success": true,
+  "logs": [
+    "[10:00:00] [Server thread/INFO]: Starting minecraft server version 1.20.4",
+    "[10:00:01] [Server thread/INFO]: Loading properties"
+  ]
+}
+```
+
+✅ 流式模式（SSE）：
+```
+data: {"log":"[10:00:05] [Server thread/INFO]: Done (5.020s)! For help, type \"help\""}
+
+data: {"log":"[10:00:10] [User Authenticator #1/INFO]: UUID of player Steve is ..."}
+```
+
+---
+
+### 9. 发送命令
+
+向 Minecraft 服务器发送控制台命令。
+
+**请求**
+```
+POST /api/mc/cmd
+```
+
+**权限**: `run_ssh`
+
+**请求体**
+```json
+{
+  "command": "say Hello World"
+}
+```
+
+**响应示例**
+
+✅ 成功：
+```json
+{
+  "success": true,
+  "message": "命令已发送"
+}
+```
+
+---
+
+### 10. 脚本管理
+
+#### 获取脚本列表
+
+获取服务器上可用的快捷脚本列表。
+
+**请求**
+```
+GET /api/scripts
+```
+
+**权限**: `run_ssh`
+
+**响应示例**
+
+✅ 成功：
+```json
+{
+  "success": true,
+  "scripts": ["backup.sh", "restart.sh"]
+}
+```
+
+#### 执行脚本
+
+执行指定的脚本。
+
+**请求**
+```
+POST /api/scripts/:scriptName/exec
+```
+
+**权限**: `run_ssh`
+
+**响应示例**
+
+✅ 成功：
+```json
+{
+  "success": true,
+  "message": "脚本执行成功",
+  "output": "Backup completed successfully...",
+  "code": 0
+}
+```
+
+---
+
+### 11. SSH 连接测试
+
+测试与服务器的 SSH 连接是否正常。
+
+**请求**
+```
+POST /api/ssh/test
+```
+
+**权限**: `run_ssh`
+
+**响应示例**
+
+✅ 成功：
+```json
+{
+  "success": true,
+  "message": "SSH 连接测试成功",
+  "ip": "1.2.3.4"
 }
 ```
 

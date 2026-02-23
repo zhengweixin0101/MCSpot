@@ -64,7 +64,7 @@ while true; do
     sleep "$CHECK_INTERVAL"
 
     STATUS_JSON=$(curl -s -H "Authorization: Bearer $AUTH_CREDENTIALS" \
-        "$API_BASE/api/server-status")
+        "$API_BASE/api/mc/status")
 
     ONLINE=$(echo "$STATUS_JSON" | jq -r '.mcOnline')
     PLAYERS=$(echo "$STATUS_JSON" | jq -r '.playersOnline // 0')

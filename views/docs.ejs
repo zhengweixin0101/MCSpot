@@ -49,9 +49,6 @@
             padding: 15px 20px;
             margin-bottom: 20px;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-        }
-
-        .header-content {
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -62,26 +59,21 @@
             font-size: 1.5em;
         }
 
-        .btn-back {
-            background: #2d3748;
-            color: white;
-            border: none;
-            padding: 7px;
-            border-radius: 8px;
-            cursor: pointer;
+        .nav-link {
+            color: #4a5568;
             text-decoration: none;
-            font-size: 0.9em;
-            transition: all 0.3s ease;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            font-size: 0.95em;
+            font-weight: 500;
+            padding: 6px 12px;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+            background: transparent;
         }
 
-        .btn-back:hover {
-            background: #1a202c;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        .nav-link:hover {
+            color: #2d3748;
+            background: #e6e6e6;
+            text-decoration: none;
         }
 
         .section {
@@ -100,52 +92,14 @@
             font-size: 1.5em;
         }
 
-        .endpoint-list {
-            list-style: none;
-        }
-
-        .endpoint-item {
-            background: #f7fafc;
-            border-left: 4px solid #2d3748;
-            padding: 20px;
-            margin-bottom: 15px;
-            border-radius: 5px;
-        }
-
-        .endpoint-item .method {
-            display: inline-block;
-            background: #2d3748;
-            color: white;
-            padding: 3px 10px;
-            border-radius: 3px;
-            font-size: 0.85em;
-            font-weight: bold;
-            margin-right: 10px;
-        }
-
-        .endpoint-item .path {
-            font-family: 'Courier New', monospace;
-            color: #2d3748;
-            font-weight: bold;
-        }
-
-        .endpoint-item .description {
-            display: block;
-            margin-top: 10px;
-            color: #4a5568;
-        }
-
         .code-block {
             background: #2d3748;
-            color: #e2e8f0;
+            color: #fff;
             padding: 15px;
-            border-radius: 5px;
-            margin: 10px 0;
-            overflow-x: auto;
-        }
-
-        .code-block code {
+            border-radius: 8px;
             font-family: 'Courier New', monospace;
+            overflow-x: auto;
+            margin: 10px 0;
             font-size: 0.9em;
         }
 
@@ -177,74 +131,17 @@
             font-size: 0.85em;
             color: #a0aec0;
         }
-
-        @media (max-width: 768px) {
-            body {
-                padding: 10px;
-            }
-
-            .header {
-                padding: 12px 15px;
-                margin-bottom: 15px;
-                border-radius: 12px;
-            }
-
-            .logo h1 {
-                font-size: 1.2em;
-            }
-
-            .section {
-                padding: 20px;
-                margin-bottom: 20px;
-                border-radius: 12px;
-            }
-
-            .section h2 {
-                font-size: 1.1em;
-                margin-bottom: 15px;
-                padding-bottom: 8px;
-            }
-
-            .endpoint-item {
-                padding: 15px;
-            }
-
-            .endpoint-item .method {
-                font-size: 0.75em;
-                padding: 2px 8px;
-            }
-
-            .endpoint-item .path {
-                font-size: 0.85em;
-            }
-
-            .endpoint-item .description {
-                font-size: 0.9em;
-            }
-
-            .code-block {
-                padding: 12px;
-            }
-
-            .code-block code {
-                font-size: 0.8em;
-            }
-        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <div class="header-content">
-                <div class="logo">
-                    <h1>📚 API文档</h1>
-                </div>
-                <a href="/dashboard" class="btn-back">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M19 12H5"></path>
-                        <path d="M12 19l-7-7 7-7"></path>
-                    </svg>
-                </a>
+            <div class="logo">
+                <h1>📚 API 文档</h1>
+            </div>
+            <div>
+                <a href="/terminal" class="nav-link">终端</a>
+                <a href="/dashboard" class="nav-link">控制台</a>
             </div>
         </div>
 
@@ -461,7 +358,7 @@
             </div>
             <div style="margin-top: 10px; padding: 10px; background: #edf2f7; border-radius: 5px;">
                 <strong>成功响应示例：</strong>
-                <div class="code-block" style="margin-top: 5px; padding: 10px;">
+                <div class="code-block">
                     <code>{
   "success": true,
   "message": "实例创建成功",
@@ -469,7 +366,7 @@
 }</code>
                 </div>
                 <strong>失败响应示例：</strong>
-                <div class="code-block" style="margin-top: 5px; padding: 10px;">
+                <div class="code-block">
                     <code>{
   "success": false,
   "message": "已存在实例，无法创建。最多只允许一个实例。"
@@ -484,7 +381,7 @@
             </div>
             <div style="margin-top: 10px; padding: 10px; background: #edf2f7; border-radius: 5px;">
                 <strong>成功响应示例：</strong>
-                <div class="code-block" style="margin-top: 5px; padding: 10px;">
+                <div class="code-block">
                     <code>{
   "success": true,
   "message": "实例删除请求已发送",
@@ -500,7 +397,7 @@
             </div>
             <div style="margin-top: 10px; padding: 10px; background: #edf2f7; border-radius: 5px;">
                 <strong>成功响应示例：</strong>
-                <div class="code-block" style="margin-top: 5px; padding: 10px;">
+                <div class="code-block">
                     <code>{
   "success": true,
   "count": 1,
@@ -523,11 +420,11 @@
             <h3 style="color: #2d3748; margin: 25px 0 15px 0;">4. 获取服务器状态</h3>
             <p style="color: #4a5568; margin-bottom: 10px;">查询 Minecraft 服务器在线状态、端口和玩家信息</p>
             <div class="code-block">
-                <code>curl -H "Authorization: Bearer admin:password" "<%= baseUrl %>/api/server-status"</code>
+                <code>curl -H "Authorization: Bearer admin:password" "<%= baseUrl %>/api/mc/status"</code>
             </div>
             <div style="margin-top: 10px; padding: 10px; background: #edf2f7; border-radius: 5px;">
                 <strong>成功响应示例：</strong>
-                <div class="code-block" style="margin-top: 5px; padding: 10px;">
+                <div class="code-block">
                     <code>{
   "success": true,
   "running": true,
@@ -549,8 +446,8 @@
             </div>
             <div style="margin-top: 10px; padding: 10px; background: #edf2f7; border-radius: 5px;">
                 <strong>成功响应示例：</strong>
-                <div class="code-block" style="margin-top: 5px; padding: 10px;">
-                    <code>{
+                <div class="code-block">
+                <code>{
   "success": true,
   "count": 10,
   "logs": [
@@ -564,7 +461,7 @@
     }
   ]
 }</code>
-                </div>
+            </div>
             </div>
 
             <h3 style="color: #2d3748; margin: 25px 0 15px 0;">6. 获取用户信息</h3>
@@ -574,14 +471,14 @@
             </div>
             <div style="margin-top: 10px; padding: 10px; background: #edf2f7; border-radius: 5px;">
                 <strong>成功响应示例：</strong>
-                <div class="code-block" style="margin-top: 5px; padding: 10px;">
-                    <code>{
+                <div class="code-block">
+                <code>{
   "success": true,
   "userId": "admin",
   "userName": "管理员",
   "permissions": ["admin", "run_instance", "start_instance", "terminate_instance", "read_instance"]
 }</code>
-                </div>
+            </div>
             </div>
 
             <h3 style="color: #2d3748; margin: 25px 0 15px 0;">7. 健康检查</h3>
@@ -591,10 +488,32 @@
             </div>
             <div style="margin-top: 10px; padding: 10px; background: #edf2f7; border-radius: 5px;">
                 <strong>成功响应示例：</strong>
-                <div class="code-block" style="margin-top: 5px; padding: 10px;">
-                    <code>{
+                <div class="code-block">
+                <code>{
   "status": "ok",
   "timestamp": "2025-02-20T12:00:00.000Z"
+}</code>
+            </div>
+            </div>
+
+            <h3 style="color: #2d3748; margin: 25px 0 15px 0;">8. SSH连接测试</h3>
+            <p style="color: #4a5568; margin-bottom: 10px;">测试服务器 SSH 连接是否可用</p>
+            <div class="code-block">
+                <code>curl -H "Authorization: Bearer admin:password" "<%= baseUrl %>/api/ssh/test"</code>
+            </div>
+            <div style="margin-top: 10px; padding: 10px; background: #edf2f7; border-radius: 5px;">
+                <strong>成功响应示例：</strong>
+                <div class="code-block">
+                    <code>{
+  "success": true,
+  "message": "SSH连接测试成功"
+}</code>
+                </div>
+                <strong>失败响应示例：</strong>
+                <div class="code-block">
+                    <code>{
+  "success": false,
+  "error": "SSH连接失败: Error: All configured authentication methods failed"
 }</code>
                 </div>
             </div>
