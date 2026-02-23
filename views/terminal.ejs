@@ -366,8 +366,10 @@
                 return {};
             }
 
+            // 构建 Basic Auth 头
+            const credentials = btoa(username + ':' + password);
             return {
-                'Authorization': 'Bearer ' + username + ':' + password,
+                'Authorization': 'Basic ' + credentials,
                 'Content-Type': 'application/json'
             };
         }
@@ -434,10 +436,12 @@
                     }
                     
                     let html = '<div style="display: flex; flex-wrap: wrap; gap: 10px;">';
-                    data.scripts.forEach(script => {
+                    data.scripts.forEach(item => {
+                        const name = item.name || item;
+                        const script = item.script || item;
                         html += `
-                            <button class="btn btn-secondary" onclick="executeScript('${script}')">
-                                ${script}
+                            <button class="btn btn-secondary" onclick="executeScript('${script}', '${name}')">
+                                ${name}
                             </button>
                         `;
                     });
@@ -485,21 +489,22 @@
         }
 
         // 执行脚本
-        async function executeScript(scriptName) {
-            if (!confirm(`确定要执行脚本 ${scriptName} 吗？`)) return;
+        async function executeScript(scriptPath, scriptName) {
+            const displayName = scriptName || scriptPath;
+            if (!confirm(`确定要执行脚本 ${displayName} 吗？`)) return;
             
             const outputDiv = document.getElementById('script-output');
             outputDiv.style.display = 'block';
-            outputDiv.textContent = `正在执行 ${scriptName} ...`;
+            outputDiv.textContent = `正在执行 ${displayName} ...`;
             
             try {
-                const response = await fetch(`/api/scripts/${scriptName}/exec`, {
+                const response = await fetch(`/api/scripts/${encodeURIComponent(scriptPath)}/exec`, {
                     method: 'POST',
                     headers: getAuthHeaders()
                 });
                 const result = await response.json();
                 
-                let output = `[${new Date().toLocaleTimeString()}] 执行 ${scriptName} ${result.success ? '成功' : '失败'}\n`;
+                let output = `[${new Date().toLocaleTimeString()}] 执行 ${displayName} ${result.success ? '成功' : '失败'}\n`;
                 output += '----------------------------------------\n';
                 if (result.output) output += result.output;
                 if (result.error) output += '\n[ERROR]\n' + result.error;
@@ -514,15 +519,15 @@
         const mcLogsOutput = document.getElementById('mc-logs');
         const mcCmdInput = document.getElementById('mc-cmd-input');
         const autoScrollCheckbox = document.getElementById('auto-scroll');
-        const autoRefreshCheckbox = document.getElementById('auto-refresh'); // 现在控制 SSE 连接
-        let eventSource = null;
+        const autoRefreshCheckbox = document.getElementById('auto-refresh');
+        let logController = null;
         let retryTimeout = null;
 
-        // 启动日志流 (SSE)
-        function startLogStream() {
-            if (eventSource) {
-                eventSource.close();
-                eventSource = null;
+        // 启动日志流 (Fetch + ReadableStream)
+        async function startLogStream() {
+            // 取消之前的请求
+            if (logController) {
+                logController.abort();
             }
             
             if (!autoRefreshCheckbox.checked) {
@@ -530,70 +535,91 @@
                 return;
             }
 
-            // 获取 token
-            const password = getAuthPassword();
-            const username = getCookie('auth_username');
-            // 注意：token 应该是 username:password 的 base64 或者直接传，这里为了简单直接传 raw
-            // 但我们的中间件只接受 username:password，所以这里直接拼接
-            const token = username + ':' + password;
-
-            const url = `/api/mc/logs?stream=true&lines=100&token=${encodeURIComponent(token)}`;
+            logController = new AbortController();
+            const signal = logController.signal;
+            const url = `/api/mc/logs?stream=true&lines=100`;
             
             mcLogsOutput.innerText = '[System] 正在连接实时日志流...\n';
             
-            eventSource = new EventSource(url);
+            try {
+                const response = await fetch(url, {
+                    headers: getAuthHeaders(),
+                    signal
+                });
 
-            eventSource.onmessage = (event) => {
-                try {
-                    const data = JSON.parse(event.data);
-                    if (data.log) {
-                        mcLogsOutput.innerText += data.log + '\n';
-                        if (autoScrollCheckbox.checked) {
-                            mcLogsOutput.scrollTop = mcLogsOutput.scrollHeight;
+                if (!response.ok) {
+                    if (response.status === 401) {
+                         window.location.href = '/';
+                         return;
+                    }
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                mcLogsOutput.innerText = ''; // 连接成功清空旧日志
+                console.log('Log stream connected');
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    buffer += decoder.decode(value, { stream: true });
+                    const parts = buffer.split('\n\n');
+                    buffer = parts.pop(); // 保留最后一个不完整的部分
+
+                    for (const part of parts) {
+                        if (!part.trim()) continue;
+                        
+                        const lines = part.split('\n');
+                        let eventType = 'message';
+                        let dataStr = '';
+
+                        for (const line of lines) {
+                            if (line.startsWith('event: ')) {
+                                eventType = line.substring(7).trim();
+                            } else if (line.startsWith('data: ')) {
+                                dataStr = line.substring(6);
+                            }
+                        }
+
+                        if (dataStr) {
+                            try {
+                                const data = JSON.parse(dataStr);
+                                if (eventType === 'stderr') {
+                                    if (data.log) {
+                                        mcLogsOutput.innerText += '[STDERR] ' + data.log + '\n';
+                                    }
+                                } else {
+                                    if (data.log) {
+                                        mcLogsOutput.innerText += data.log + '\n';
+                                    } else if (data.message) {
+                                         mcLogsOutput.innerText += `\n[System] Message: ${data.message}\n`;
+                                    }
+                                }
+                                if (autoScrollCheckbox.checked) {
+                                    mcLogsOutput.scrollTop = mcLogsOutput.scrollHeight;
+                                }
+                            } catch (e) {
+                                console.error('Parse error', e);
+                            }
                         }
                     }
-                } catch (e) {
-                    console.error('Parse error', e);
                 }
-            };
-
-            eventSource.addEventListener('stderr', (event) => {
-                 try {
-                    const data = JSON.parse(event.data);
-                    if (data.log) {
-                        mcLogsOutput.innerText += '[STDERR] ' + data.log + '\n';
-                         if (autoScrollCheckbox.checked) {
-                            mcLogsOutput.scrollTop = mcLogsOutput.scrollHeight;
-                        }
-                    }
-                } catch (e) {
-                    console.error('Parse error', e);
-                }
-            });
-
-            eventSource.addEventListener('error', (event) => {
-                if (event.data) {
-                    try {
-                        const data = JSON.parse(event.data);
-                         mcLogsOutput.innerText += `\n[System] Error: ${data.message || 'Unknown error'}\n`;
-                    } catch(e) {}
-                } else {
-                     // 可能是网络错误或连接中断
-                     console.log('SSE connection lost, retrying in 5s...');
-                }
-                eventSource.close();
+            } catch (err) {
+                if (err.name === 'AbortError') return;
+                
+                console.error('Stream error:', err);
+                mcLogsOutput.innerText += `\n[System] Connection lost: ${err.message}\n`;
                 
                 // 自动重连
                 if (autoRefreshCheckbox.checked) {
-                     if (retryTimeout) clearTimeout(retryTimeout);
-                     retryTimeout = setTimeout(startLogStream, 5000);
+                    if (retryTimeout) clearTimeout(retryTimeout);
+                    retryTimeout = setTimeout(startLogStream, 5000);
                 }
-            });
-            
-            eventSource.onopen = () => {
-                mcLogsOutput.innerText = ''; // 清空旧日志，因为服务器会重新发送最后100行
-                console.log('SSE connected');
-            };
+            }
         }
 
         // 监听复选框变化
@@ -601,9 +627,9 @@
             if (autoRefreshCheckbox.checked) {
                 startLogStream();
             } else {
-                if (eventSource) {
-                    eventSource.close();
-                    eventSource = null;
+                if (logController) {
+                    logController.abort();
+                    logController = null;
                 }
                 if (retryTimeout) clearTimeout(retryTimeout);
                 mcLogsOutput.innerText += '\n[System] 实时日志已暂停\n';
@@ -660,7 +686,7 @@
         
         // 页面卸载时关闭连接
         window.addEventListener('beforeunload', () => {
-            if (eventSource) eventSource.close();
+            if (logController) logController.abort();
         });
     </script>
 </body>

@@ -863,7 +863,7 @@
             }
 
             return {
-                'Authorization': 'Bearer ' + username + ':' + password,
+                'Authorization': 'Basic ' + btoa(username + ':' + password),
                 'Content-Type': 'application/json'
             };
         }

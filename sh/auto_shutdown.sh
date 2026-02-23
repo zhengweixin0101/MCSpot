@@ -1,175 +1,127 @@
 #!/bin/bash
 set -Eeuo pipefail
 
-# 加载配置文件
-CONFIG_FILE="/opt/.env"
-if [ -f "$CONFIG_FILE" ]; then
-    source "$CONFIG_FILE"
+# 获取脚本所在目录
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+
+# 加载公共库
+if [ -f "$SCRIPT_DIR/lib.sh" ]; then
+    source "$SCRIPT_DIR/lib.sh"
+else
+    echo "错误: 找不到 lib.sh"
+    exit 1
 fi
 
-MCS_DIR="${MCS_DIR}" # Minecraft 服务端目录
-MC_JAR="${MC_JAR}" # Minecraft 服务端 JAR 文件名
-MC_JAR_PATH="$MCS_DIR/$MC_JAR" # JAR 文件完整路径
+log_info "初始化自动关服脚本..."
+check_command jq
+check_command curl
 
-STORAGE_TYPE="${STORAGE_TYPE:-s3}" # 存储方式: s3 或 cos
+# 配置参数
+IDLE_THRESHOLD="${IDLE_THRESHOLD:-5}" # 连续空闲次数阈值
+CHECK_INTERVAL="${CHECK_INTERVAL:-120}" # 检测间隔（秒）
 
-# S3 配置
-S3_ENDPOINT="${S3_ENDPOINT}" # S3 兼容存储服务 URL
-S3_BUCKET="${S3_BUCKET}" # S3 存储桶名称
-
-# 腾讯云 COS 配置
-COS_BUCKET_ALIAS="${COS_BUCKET_ALIAS:-mcspot}" # COS 存储桶别名
-
-API_BASE="${API_BASE}" # API 基础 URL
-AUTH_CREDENTIALS="${AUTH_CREDENTIALS}" # 认证信息
-INSTANCE_DELETED=false
-BACKUP_SUCCESS=false
+IDLE_COUNT=0
 SHOULD_TERMINATE_ON_ERROR=true
 
 # 删除实例函数
 terminate_instance() {
-    if [ "$INSTANCE_DELETED" = false ]; then
-        echo "[AUTO] 删除实例..."
-        curl -s -H "Authorization: Bearer $AUTH_CREDENTIALS" \
-            "$API_BASE/api/terminate-instance"
-        echo
-        echo "[AUTO] 实例删除请求已发送"
-        INSTANCE_DELETED=true
-    fi
+    log_info "请求删除实例..."
+    curl -s -u "$AUTH_USERNAME:$AUTH_PASSWORD" \
+        "$API_BASE/api/terminate-instance"
+    log_info "实例删除请求已发送"
 }
 
 # 错误清理函数
 cleanup_on_error() {
-    echo "[AUTO] 脚本异常退出，执行清理..."
-
+    log_error "脚本异常退出，执行清理..."
     if [ "$SHOULD_TERMINATE_ON_ERROR" = true ]; then
         terminate_instance
     fi
-
     exit 1
 }
 
 trap cleanup_on_error ERR
 
-IDLE_COUNT=0
-# 循环检测配置
-IDLE_THRESHOLD="${IDLE_THRESHOLD:-5}" # 连续空闲次数阈值
-CHECK_INTERVAL="${CHECK_INTERVAL:-120}" # 检测间隔（秒）
+log_info "开始监听 Minecraft 玩家状态..."
+log_info "配置: 检测间隔 ${CHECK_INTERVAL}s, 空闲阈值 ${IDLE_THRESHOLD}次 (约 $((IDLE_THRESHOLD * CHECK_INTERVAL / 60)) 分钟)"
 
-echo "[AUTO] 开始监听 Minecraft 玩家状态..."
-echo "[AUTO] 配置参数: 检测间隔 ${CHECK_INTERVAL}s, 空闲阈值 ${IDLE_THRESHOLD}次 (约 $((IDLE_THRESHOLD * CHECK_INTERVAL / 60)) 分钟)"
-
-# 主循环
 while true; do
     sleep "$CHECK_INTERVAL"
 
-    STATUS_JSON=$(curl -s -H "Authorization: Bearer $AUTH_CREDENTIALS" \
-        "$API_BASE/api/mc/status")
+    # 检查停止标志
+    if [ -f "$STOP_FLAG_FILE" ]; then
+        log_info "检测到停止标志文件，自动关服脚本退出"
+        exit 0
+    fi
 
-    ONLINE=$(echo "$STATUS_JSON" | jq -r '.mcOnline')
+    # 获取状态，允许失败
+    if ! STATUS_JSON=$(curl -s -f -u "$AUTH_USERNAME:$AUTH_PASSWORD" \
+        "$API_BASE/api/mc/status"); then
+        log_warn "获取服务器状态失败 (API请求错误)，跳过本次检测"
+        continue
+    fi
+
+    # 解析状态，允许失败
+    if ! ONLINE=$(echo "$STATUS_JSON" | jq -r '.mcOnline'); then
+        log_warn "解析服务器状态失败 (JSON解析错误)，跳过本次检测"
+        continue
+    fi
+
     PLAYERS=$(echo "$STATUS_JSON" | jq -r '.playersOnline // 0')
 
     if [ "$ONLINE" == "true" ] && [ "$PLAYERS" -gt 0 ]; then
         IDLE_COUNT=0
-        echo "$(date) 玩家在线: $PLAYERS，重置空闲计数"
+        log_info "玩家在线: $PLAYERS，重置空闲计数"
     else
         IDLE_COUNT=$((IDLE_COUNT+1))
-        echo "$(date) 无玩家在线，空闲计数: $IDLE_COUNT/$IDLE_THRESHOLD"
+        log_info "无玩家在线，空闲计数: $IDLE_COUNT/$IDLE_THRESHOLD"
     fi
 
     # 达到空闲阈值
     if [ "$IDLE_COUNT" -ge "$IDLE_THRESHOLD" ]; then
-        echo "[AUTO] 连续 $IDLE_COUNT 次检测无玩家（共 $((IDLE_COUNT * CHECK_INTERVAL / 60)) 分钟），开始自动关服..."
+        
+        # 二次确认
+        log_info "达到空闲阈值，进行二次确认（等待10s）..."
+        sleep 10
+        if STATUS_JSON=$(curl -s -f -u "$AUTH_USERNAME:$AUTH_PASSWORD" "$API_BASE/api/mc/status"); then
+            ONLINE_CHECK=$(echo "$STATUS_JSON" | jq -r '.mcOnline')
+            PLAYERS_CHECK=$(echo "$STATUS_JSON" | jq -r '.playersOnline // 0')
+            if [ "$ONLINE_CHECK" == "true" ] && [ "$PLAYERS_CHECK" -gt 0 ]; then
+                log_info "二次确认发现玩家在线 ($PLAYERS_CHECK)，取消关服，重置计数"
+                IDLE_COUNT=0
+                continue
+            fi
+        fi
+
+        # 尝试获取锁，避免与手动操作冲突
+        exec 200>"$LOCK_FILE"
+        if ! flock -n 200; then
+             log_warn "检测到其他管理脚本正在运行，跳过本次自动关服"
+             continue
+        fi
+        
+        log_info "连续 $IDLE_COUNT 次检测无玩家，开始自动关服流程..."
 
         # 关闭 Minecraft 服务端
-        if pgrep -f "$MC_JAR_PATH" > /dev/null 2>&1; then
-            echo "[AUTO] 关闭 Minecraft 服务端..."
-            pkill -f "$MC_JAR_PATH"
-            sleep 5
-
-            if pgrep -f "$MC_JAR_PATH" > /dev/null 2>&1; then
-                echo "[AUTO] 强制杀掉未退出的服务端"
-                pkill -9 -f "$MC_JAR_PATH"
-            fi
-        else
-            echo "[AUTO] 未找到 Minecraft 服务端进程"
-        fi
-
-        sleep 5
-
-        # 校验目录
-        if [ -z "$MCS_DIR" ] || [ ! -d "$MCS_DIR" ]; then
-            echo "[AUTO] Minecraft 服务端目录无效: $MCS_DIR"
-            SHOULD_TERMINATE_ON_ERROR=false
-            exit 1
-        fi
-
-        cd "$MCS_DIR"
-
+        stop_mc_server
+        
         # 压缩备份
-        rm -f world.zip
-
-        echo "[AUTO] 开始压缩 world..."
-        zip -r world.zip \
-            world \
-            server.properties \
-            eula.txt \
-            ops.json \
-            whitelist.json \
-            banned-players.json \
-            banned-ips.json \
-            usercache.json \
-            > /dev/null
-
-        if [ ! -f "world.zip" ]; then
-            echo "[AUTO] world.zip 未生成"
-            SHOULD_TERMINATE_ON_ERROR=false
-            exit 1
+        if ! compress_world "world.zip"; then
+             SHOULD_TERMINATE_ON_ERROR=false
+             exit 1
         fi
-
-        echo "[AUTO] world.zip 压缩完成"
-
-        # 根据存储类型上传存档
-        UPLOAD_SUCCESS=false
-        if [ "$STORAGE_TYPE" = "cos" ]; then
-            echo "[AUTO] 上传到腾讯云 COS..."
-            if coscli cp world.zip "cos://${COS_BUCKET_ALIAS}/mc/world.zip"; then
-                UPLOAD_SUCCESS=true
-                echo "[AUTO] world.zip 上传成功"
-            else
-                echo "[AUTO] 上传失败，保留实例"
-                SHOULD_TERMINATE_ON_ERROR=false
-                exit 1
-            fi
-        elif [ "$STORAGE_TYPE" = "s3" ]; then
-            echo "[AUTO] 上传到 S3..."
-            if aws s3 cp world.zip \
-                "s3://$S3_BUCKET/mc/world.zip" \
-                --endpoint-url "$S3_ENDPOINT"; then
-                UPLOAD_SUCCESS=true
-                echo "[AUTO] world.zip 上传成功"
-            else
-                echo "[AUTO] 上传失败，保留实例"
-                SHOULD_TERMINATE_ON_ERROR=false
-                exit 1
-            fi
-        else
-            echo "[AUTO] 错误: 不支持的存储类型 $STORAGE_TYPE，请使用 s3 或 cos"
-            SHOULD_TERMINATE_ON_ERROR=false
-            exit 1
+        
+        # 上传备份
+        if ! upload_file "world.zip" "mc/world.zip"; then
+             log_error "上传失败，保留实例"
+             SHOULD_TERMINATE_ON_ERROR=false
+             exit 1
         fi
-
-        if [ "$UPLOAD_SUCCESS" = true ]; then
-            BACKUP_SUCCESS=true
-        fi
-
-        # 删除实例
-        if [ "$BACKUP_SUCCESS" = true ]; then
-            echo "[AUTO] 备份成功，开始删除实例"
-            terminate_instance
-        fi
-
-        echo "[AUTO] 自动关服流程完成"
+        
+        log_info "备份上传成功，即将删除实例..."
+        terminate_instance
+        
+        log_info "自动关服流程完成"
         exit 0
     fi
 done

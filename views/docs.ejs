@@ -177,13 +177,13 @@
 
         <div class="section">
             <h2>认证方式</h2>
-            <p style="margin-bottom: 15px;">所有API接口（除健康检查外）需要在请求头中添加 Authorization 字段：</p>
+            <p style="margin-bottom: 15px;">所有API接口（除健康检查外）需要在请求头中添加 Authorization 字段（HTTP Basic Auth）：</p>
             <div class="code-block">
-                <code>Authorization: Bearer &lt;用户名&gt;:&lt;密码&gt;</code>
+                <code>Authorization: Basic &lt;base64(用户名:密码)&gt;</code>
             </div>
-            <p style="margin-top: 15px; color: #4a5568;">例如：</p>
+            <p style="margin-top: 15px; color: #4a5568;">或者使用 curl 的 -u 参数：</p>
             <div class="code-block">
-                <code>Authorization: Bearer admin:password123</code>
+                <code>curl -u admin:password123 ...</code>
             </div>
         </div>
 
@@ -354,7 +354,7 @@
             <h3 style="color: #2d3748; margin: 15px 0;">1. 创建实例</h3>
             <p style="color: #4a5568; margin-bottom: 10px;">通过启动模板创建新的实例</p>
             <div class="code-block">
-                <code>curl -H "Authorization: Bearer admin:password" "<%= baseUrl %>/api/run-instance"</code>
+                <code>curl -u admin:password "<%= baseUrl %>/api/run-instance"</code>
             </div>
             <div style="margin-top: 10px; padding: 10px; background: #edf2f7; border-radius: 5px;">
                 <strong>成功响应示例：</strong>
@@ -377,7 +377,7 @@
             <h3 style="color: #2d3748; margin: 25px 0 15px 0;">2. 删除实例</h3>
             <p style="color: #4a5568; margin-bottom: 10px;">删除当前账号下唯一的实例</p>
             <div class="code-block">
-                <code>curl -H "Authorization: Bearer admin:password" "<%= baseUrl %>/api/terminate-instance"</code>
+                <code>curl -u admin:password "<%= baseUrl %>/api/terminate-instance"</code>
             </div>
             <div style="margin-top: 10px; padding: 10px; background: #edf2f7; border-radius: 5px;">
                 <strong>成功响应示例：</strong>
@@ -393,7 +393,7 @@
             <h3 style="color: #2d3748; margin: 25px 0 15px 0;">3. 获取实例列表</h3>
             <p style="color: #4a5568; margin-bottom: 10px;">查询当前账户下的所有实例</p>
             <div class="code-block">
-                <code>curl -H "Authorization: Bearer admin:password" "<%= baseUrl %>/api/instances"</code>
+                <code>curl -u admin:password "<%= baseUrl %>/api/instances"</code>
             </div>
             <div style="margin-top: 10px; padding: 10px; background: #edf2f7; border-radius: 5px;">
                 <strong>成功响应示例：</strong>
@@ -420,7 +420,7 @@
             <h3 style="color: #2d3748; margin: 25px 0 15px 0;">4. 获取服务器状态</h3>
             <p style="color: #4a5568; margin-bottom: 10px;">查询 Minecraft 服务器在线状态、端口和玩家信息</p>
             <div class="code-block">
-                <code>curl -H "Authorization: Bearer admin:password" "<%= baseUrl %>/api/mc/status"</code>
+                <code>curl -u admin:password "<%= baseUrl %>/api/mc/status"</code>
             </div>
             <div style="margin-top: 10px; padding: 10px; background: #edf2f7; border-radius: 5px;">
                 <strong>成功响应示例：</strong>
@@ -442,7 +442,7 @@
             <h3 style="color: #2d3748; margin: 25px 0 15px 0;">5. 获取操作日志</h3>
             <p style="color: #4a5568; margin-bottom: 10px;">获取操作日志（仅管理员权限）</p>
             <div class="code-block">
-                <code>curl -H "Authorization: Bearer admin:password" "<%= baseUrl %>/api/auth-logs?limit=10"</code>
+                <code>curl -u admin:password "<%= baseUrl %>/api/auth-logs?limit=10"</code>
             </div>
             <div style="margin-top: 10px; padding: 10px; background: #edf2f7; border-radius: 5px;">
                 <strong>成功响应示例：</strong>
@@ -467,7 +467,7 @@
             <h3 style="color: #2d3748; margin: 25px 0 15px 0;">6. 获取用户信息</h3>
             <p style="color: #4a5568; margin-bottom: 10px;">获取当前认证用户的信息</p>
             <div class="code-block">
-                <code>curl -H "Authorization: Bearer admin:password" "<%= baseUrl %>/api/user-info"</code>
+                <code>curl -u admin:password "<%= baseUrl %>/api/user-info"</code>
             </div>
             <div style="margin-top: 10px; padding: 10px; background: #edf2f7; border-radius: 5px;">
                 <strong>成功响应示例：</strong>
@@ -499,7 +499,7 @@
             <h3 style="color: #2d3748; margin: 25px 0 15px 0;">8. SSH连接测试</h3>
             <p style="color: #4a5568; margin-bottom: 10px;">测试服务器 SSH 连接是否可用</p>
             <div class="code-block">
-                <code>curl -H "Authorization: Bearer admin:password" "<%= baseUrl %>/api/ssh/test"</code>
+                <code>curl -u admin:password "<%= baseUrl %>/api/ssh/test"</code>
             </div>
             <div style="margin-top: 10px; padding: 10px; background: #edf2f7; border-radius: 5px;">
                 <strong>成功响应示例：</strong>

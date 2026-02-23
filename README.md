@@ -180,17 +180,21 @@ MC_PORT=25565
 
 ### 认证格式
 
-**所有受保护 API 接口都必须使用 `username:password` 格式进行认证**。
+**所有受保护 API 接口都必须使用 HTTP Basic Auth 进行认证**。
 
 请求头格式：
 ```
-Authorization: Bearer <username>:<password>
+Authorization: Basic <base64(username:password)>
+```
+
+或者使用 `curl` 的 `-u` 参数自动处理：
+```bash
+curl -u "username:password" http://localhost:3000/api/...
 ```
 
 其中：
 - `<username>` 是 `AUTH_PASSWORDS` 配置中定义的用户名
 - `<password>` 是该用户对应的密码
-- 用户名和密码必须都正确匹配
 
 ### 示例
 
@@ -206,7 +210,7 @@ Authorization: Bearer <username>:<password>
 
 则正确的认证请求为：
 ```bash
-curl -H "Authorization: Bearer admin:Admin@abc123456!" http://localhost:3000/api/instances
+curl -u "admin:Admin@abc123456!" http://localhost:3000/api/instances
 ```
 
 ### 权限等级
@@ -251,7 +255,7 @@ GET /api/run-instance
 
 **请求示例**
 ```bash
-curl -H "Authorization: Bearer admin:password123" \
+curl -u admin:password123 \
   "http://localhost:3000/api/run-instance"
 ```
 
@@ -292,7 +296,7 @@ GET /api/terminate-instance
 
 **请求示例**
 ```bash
-curl -H "Authorization: Bearer operator:password123" \
+curl -u operator:password123 \
   "http://localhost:3000/api/terminate-instance"
 ```
 
@@ -311,8 +315,9 @@ GET /api/instances
 
 **请求示例**
 ```bash
-curl -H "Authorization: Bearer viewer:password123" \
+curl -u "viewer:password123" \
   "http://localhost:3000/api/instances"
+```
 ```
 
 **响应示例**
@@ -621,23 +626,23 @@ POST /api/ssh/test
 
 ```bash
 # 1. 获取用户信息
-curl -H "Authorization: Bearer admin:Admin@abc123456!" \
+curl -u "admin:Admin@abc123456!" \
   http://localhost:3000/api/user-info
 
 # 2. 创建实例
-curl -H "Authorization: Bearer operator:Operator@123456" \
+curl -u "operator:Operator@123456" \
   "http://localhost:3000/api/run-instance"
 
 # 3. 查看实例列表
-curl -H "Authorization: Bearer viewer:Viewer@123456" \
+curl -u "viewer:Viewer@123456" \
   http://localhost:3000/api/instances
 
 # 4. 查看操作日志
-curl -H "Authorization: Bearer admin:Admin@abc123456!" \
+curl -u "admin:Admin@abc123456!" \
   "http://localhost:3000/api/auth-logs?limit=20"
 
 # 5. 删除实例
-curl -H "Authorization: Bearer operator:Operator@123456" \
+curl -u "operator:Operator@123456" \
   "http://localhost:3000/api/terminate-instance"
 ```
 
@@ -669,8 +674,8 @@ curl -H "Authorization: Bearer operator:Operator@123456" \
 # ❌ 错误 - 缺少认证头
 curl http://localhost:3000/api/instances
 
-# ✅ 正确 - 包含认证头
-curl -H "Authorization: Bearer username:password" http://localhost:3000/api/instances
+# ✅ 正确 - 使用 -u 参数
+curl -u "username:password" http://localhost:3000/api/instances
 ```
 
 ---
@@ -682,10 +687,10 @@ curl -H "Authorization: Bearer username:password" http://localhost:3000/api/inst
 **解决方案**:
 ```bash
 # ❌ 错误 - 只提供密码
-curl -H "Authorization: Bearer onlypassword" http://localhost:3000/api/instances
+curl -u "onlypassword" http://localhost:3000/api/instances
 
 # ✅ 正确 - 提供 username:password
-curl -H "Authorization: Bearer admin:password123" http://localhost:3000/api/instances
+curl -u "admin:password123" http://localhost:3000/api/instances
 ```
 
 ---

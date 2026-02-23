@@ -1,0 +1,14 @@
+[
+  {
+    "name": "一键启动",
+    "script": "start.sh"
+  },
+  {
+    "name": "一键停止",
+    "script": "stop.sh"
+  },
+  {
+    "name": "手动备份",
+    "script": "backup.sh"
+  }
+]

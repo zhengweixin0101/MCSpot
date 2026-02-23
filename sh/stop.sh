@@ -1,105 +1,52 @@
 #!/bin/bash
 set -Eeuo pipefail
 
-# 加载配置文件
-CONFIG_FILE="/opt/.env"
-if [ -f "$CONFIG_FILE" ]; then
-    source "$CONFIG_FILE"
-fi
+# 获取脚本所在目录
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 
-MCS_DIR="${MCS_DIR}" # Minecraft 服务端目录
-MC_JAR="${MC_JAR}" # Minecraft 服务端 JAR 文件名
-MC_JAR_PATH="$MCS_DIR/$MC_JAR" # JAR 文件完整路径
-
-STORAGE_TYPE="${STORAGE_TYPE:-s3}" # 存储方式: s3 或 cos
-
-# S3 配置
-S3_ENDPOINT="${S3_ENDPOINT}" # S3 兼容存储服务 URL
-S3_BUCKET="${S3_BUCKET}" # S3 存储桶名称
-
-# 腾讯云 COS 配置
-COS_BUCKET_ALIAS="${COS_BUCKET_ALIAS:-mcspot}" # COS 存储桶别名
-
-echo "[STOP] 开始手动停止流程..."
-
-# 校验必要变量
-if [ -z "$MCS_DIR" ] || [ ! -d "$MCS_DIR" ]; then
-    echo "[STOP] 错误: Minecraft 服务端目录无效: $MCS_DIR"
+# 加载公共库
+if [ -f "$SCRIPT_DIR/lib.sh" ]; then
+    source "$SCRIPT_DIR/lib.sh"
+else
+    echo "错误: 找不到 lib.sh"
     exit 1
 fi
 
-if [ -z "$MC_JAR" ]; then
-    echo "[STOP] 错误: MC_JAR 未设置"
-    exit 1
+# 获取脚本锁，确保没有其他管理脚本运行
+script_lock
+
+log_info "创建停止标志文件..."
+touch "$STOP_FLAG_FILE"
+
+# 先停止自动关服脚本，防止干扰
+if pgrep -f "auto_shutdown.sh" > /dev/null 2>&1; then
+    log_info "停止自动关服脚本..."
+    pkill -f "auto_shutdown.sh"
 fi
 
-# 停止 Minecraft 服务端
+log_info "开始手动停止流程..."
+
+# 检查服务是否运行
 if pgrep -f "$MC_JAR_PATH" > /dev/null 2>&1; then
-    echo "[STOP] 关闭 Minecraft 服务端..."
-    pkill -f "$MC_JAR_PATH"
-    sleep 5
-
-    if pgrep -f "$MC_JAR_PATH" > /dev/null 2>&1; then
-        echo "[STOP] 强制杀掉未退出的服务端"
-        pkill -9 -f "$MC_JAR_PATH"
-    fi
+    # 停止 Minecraft 服务端
+    stop_mc_server
 else
-    echo "[STOP] 未找到 Minecraft 服务端进程"
+    log_info "Minecraft 服务端未运行"
+    # 如果服务未运行，直接退出，不执行后续的备份逻辑
+    exit 0
 fi
 
-sleep 5
-
-# 停止 auto_shutdown.sh 脚本
-if pgrep -f "^/opt/auto_shutdown.sh" > /dev/null 2>&1; then
-    echo "[STOP] 停止 auto_shutdown.sh ..."
-    pkill -f "^/opt/auto_shutdown.sh"
-    sleep 2
-
-    if pgrep -f "^/opt/auto_shutdown.sh" > /dev/null 2>&1; then
-        echo "[STOP] 强制杀掉未退出的 auto_shutdown.sh"
-        pkill -9 -f "^/opt/auto_shutdown.sh"
-    fi
-else
-    echo "[STOP] 未找到 auto_shutdown.sh 进程"
-fi
-
-# 备份世界和配置文件
-cd "$MCS_DIR"
-
-rm -f world.zip
-
-zip -r world.zip \
-    world \
-    server.properties \
-    eula.txt \
-    ops.json \
-    whitelist.json \
-    banned-players.json \
-    banned-ips.json \
-    usercache.json \
-    > /dev/null
-
-if [ ! -f "world.zip" ]; then
-    echo "[STOP] 错误: world.zip 未生成"
+# 压缩备份
+if ! compress_world "world.zip"; then
+    log_error "备份打包失败"
     exit 1
 fi
 
-echo "[STOP] 世界数据和配置文件已打包为 world.zip"
-
-# 根据存储类型上传存档
-if [ "$STORAGE_TYPE" = "cos" ]; then
-    echo "[STOP] 上传到腾讯云 COS..."
-    coscli cp world.zip "cos://${COS_BUCKET_ALIAS}/mc/world.zip"
-    echo "[STOP] world.zip 上传完成"
-elif [ "$STORAGE_TYPE" = "s3" ]; then
-    echo "[STOP] 上传到 S3..."
-    aws s3 cp world.zip \
-        "s3://$S3_BUCKET/mc/world.zip" \
-        --endpoint-url "$S3_ENDPOINT"
-    echo "[STOP] world.zip 上传完成"
-else
-    echo "[STOP] 错误: 不支持的存储类型 $STORAGE_TYPE，请使用 s3 或 cos"
+# 上传备份
+if ! upload_file "world.zip" "mc/world.zip"; then
+    log_error "备份上传失败"
     exit 1
 fi
 
-echo "[STOP] 停止流程完成"
+log_info "停止流程完成"
+exit 0

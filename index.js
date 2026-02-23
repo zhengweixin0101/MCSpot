@@ -86,20 +86,20 @@ const AUTH_PASSWORDS = JSON.parse(process.env.AUTH_PASSWORDS || '{}');
 // 密码验证中间件
 const authenticate = async (req, res, next) => {
   let authHeader = req.headers.authorization;
+  let authCredentials;
 
-  // 支持从 Query 参数获取 Token (用于 SSE 等无法自定义 Header 的场景)
-  if (!authHeader && req.query.token) {
-    authHeader = 'Bearer ' + req.query.token;
+  // 支持 Basic Auth
+  if (authHeader && authHeader.startsWith('Basic ')) {
+    const base64Credentials = authHeader.substring(6);
+    authCredentials = Buffer.from(base64Credentials, 'base64').toString('ascii');
   }
-
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  else {
     return res.status(401).json({
       success: false,
-      message: '未提供认证信息'
+      message: '未提供认证信息或认证方式错误'
     });
   }
 
-  const authCredentials = authHeader.substring(7);
   const clientIp = getClientIp(req);
   const requestId = crypto.randomUUID();
 
@@ -240,16 +240,6 @@ const webAuth = (req, res, next) => {
     // 从cookie读取用户名和密码
     username = cookieUsername;
     password = cookiePassword;
-  } else if (authHeader && authHeader.startsWith('Bearer ')) {
-    // 从authorization header读取 username:password 格式
-    const authCredentials = authHeader.substring(7);
-    if (!authCredentials.includes(':')) {
-      // 认证格式错误
-      return res.redirect('/');
-    }
-    const colonIndex = authCredentials.indexOf(':');
-    username = authCredentials.substring(0, colonIndex);
-    password = authCredentials.substring(colonIndex + 1);
   }
 
   if (!username || !password) {
@@ -533,35 +523,64 @@ async function getSshConfig(requestId, clientIp, userId) {
 app.get('/api/scripts', authenticate, checkPermission('run_ssh'), async (req, res) => {
   const requestId = req.auth.requestId;
   const clientIp = getClientIp(req);
-  const remotePath = process.env.REMOTE_SCRIPT_PATH || '/root/sh';
+  const remotePath = process.env.REMOTE_SCRIPT_PATH || '/op/sh';
+  const localScriptsPath = path.join(__dirname, 'sh', 'scripts.json');
 
   try {
     const { config } = await getSshConfig(requestId, clientIp, req.auth.userId);
     const conn = new Client();
 
     conn.on('ready', () => {
-      conn.exec(`ls -1 ${remotePath}/*.sh`, (err, stream) => {
+      // 尝试读取远程 scripts.json
+      const scriptsJsonPath = path.posix.join(remotePath, 'scripts.json');
+      conn.exec(`cat "${scriptsJsonPath}"`, (err, stream) => {
         if (err) {
           conn.end();
-          return res.status(500).json({ success: false, message: '列出脚本失败', error: err.message });
+          return res.status(500).json({ success: false, message: 'SSH 执行错误', error: err.message });
         }
 
-        let output = '';
+        let jsonOutput = '';
         stream.on('close', (code, signal) => {
-          conn.end();
-          if (code !== 0) {
-             // ls 返回非0可能是因为目录为空或不存在，我们返回空列表而不是报错
-             return res.json({ success: true, scripts: [] });
-          }
-          const files = output.trim().split('\n')
-            .map(line => path.basename(line.trim()))
-            .filter(name => name && name.endsWith('.sh'));
-          res.json({ success: true, scripts: files });
+          if (code === 0) {
+            // 成功读取到 scripts.json
+            try {
+              const scripts = JSON.parse(jsonOutput);
+              conn.end();
+              return res.json({ success: true, scripts });
+            } catch (parseErr) {
+              console.warn(`[WARN] 远程 scripts.json 解析失败: ${parseErr.message}`);
+              // 解析失败，继续执行 ls
+            }
+          } 
+          
+          // 读取失败或解析失败，降级为 ls 列出 .sh 文件
+          conn.exec(`ls -1 ${remotePath}/*.sh`, (err, stream) => {
+             if (err) {
+               conn.end();
+               return res.status(500).json({ success: false, message: '列出脚本失败', error: err.message });
+             }
+
+             let output = '';
+             stream.on('close', (code, signal) => {
+               conn.end();
+               if (code !== 0) {
+                  return res.json({ success: true, scripts: [] });
+               }
+               const files = output.trim().split('\n')
+                 .map(line => {
+                   const fileName = path.basename(line.trim());
+                   return { name: fileName, script: fileName };
+                 })
+                 .filter(item => item.script && item.script.endsWith('.sh'));
+               res.json({ success: true, scripts: files });
+             }).on('data', (data) => {
+               output += data.toString();
+             });
+          });
+
         }).on('data', (data) => {
-          output += data.toString();
-        }).stderr.on('data', (data) => {
-          // ignore stderr
-        });
+          jsonOutput += data.toString();
+        }).stderr.on('data', () => {});
       });
     }).on('error', (err) => {
       res.status(500).json({ success: false, message: 'SSH 连接失败', error: err.message });

@@ -1,71 +1,62 @@
 #!/bin/bash
-set -e
+set -Eeuo pipefail
 
-# 加载配置文件
-CONFIG_FILE="/opt/.env"
-if [ -f "$CONFIG_FILE" ]; then
-    source "$CONFIG_FILE"
-fi
+# 获取脚本所在目录
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 
-MCS_DIR="${MCS_DIR}" # Minecraft 服务端目录
-
-STORAGE_TYPE="${STORAGE_TYPE:-s3}" # 存储方式: s3 或 cos
-
-# S3 配置
-S3_ENDPOINT="${S3_ENDPOINT}" # S3 兼容存储服务 URL
-S3_BUCKET="${S3_BUCKET}" # S3 存储桶名称
-
-# 腾讯云 COS 配置
-COS_BUCKET_ALIAS="${COS_BUCKET_ALIAS:-mcspot}" # COS 存储桶别名
-
-echo "[BACKUP] 开始备份..."
-
-# 检查目录是否存在
-if [ ! -d "$MCS_DIR/world" ]; then
-    echo "[BACKUP] 错误: 世界目录不存在 $MCS_DIR/world"
+# 加载公共库
+if [ -f "$SCRIPT_DIR/lib.sh" ]; then
+    source "$SCRIPT_DIR/lib.sh"
+else
+    echo "错误: 找不到 lib.sh"
     exit 1
 fi
 
-# 进入 MC 服务器目录
-cd "$MCS_DIR"
+# 获取脚本锁
+script_lock
+
+log_info "开始手动备份流程..."
 
 # 获取日期时间
 DATETIME=$(date +"%Y-%m-%d-%H-%M-%S")
 BACKUP_FILE="world_backup_${DATETIME}.zip"
 
-echo "[BACKUP] 备份文件名: $BACKUP_FILE"
+# 检查服务器是否运行
+IS_RUNNING=false
+if pgrep -f "$MC_JAR_PATH" > /dev/null 2>&1; then
+    IS_RUNNING=true
+fi
 
-# 压缩世界数据和配置文件
-echo "[BACKUP] 正在压缩 world 目录和配置文件..."
-zip -r "$BACKUP_FILE" world server.properties eula.txt ops.json whitelist.json banned-players.json banned-ips.json usercache.json 2>/dev/null || true
+# 定义清理函数，确保恢复自动保存
+cleanup() {
+    if [ "$IS_RUNNING" = true ]; then
+        if screen -list | grep -q "$SCREEN_NAME"; then
+            log_info "恢复自动保存..."
+            screen -S "$SCREEN_NAME" -p 0 -X stuff "save-on$(printf \\r)"
+        fi
+    fi
+}
+trap cleanup EXIT
 
-if [ $? -ne 0 ]; then
-    echo "[BACKUP] 压缩失败！"
+if [ "$IS_RUNNING" = true ]; then
+    log_info "服务器运行中，关闭自动保存并强制保存..."
+    screen -S "$SCREEN_NAME" -p 0 -X stuff "save-off$(printf \\r)"
+    screen -S "$SCREEN_NAME" -p 0 -X stuff "save-all$(printf \\r)"
+    # 等待保存完成
+    sleep 5
+fi
+
+# 压缩备份
+if ! compress_world "$BACKUP_FILE"; then
+    log_error "备份打包失败"
     exit 1
 fi
 
-echo "[BACKUP] 压缩完成，文件大小: $(du -h "$BACKUP_FILE" | cut -f1)"
-
-# 根据存储类型上传备份
-if [ "$STORAGE_TYPE" = "cos" ]; then
-    echo "[BACKUP] 正在上传到腾讯云 COS..."
-    coscli cp "$BACKUP_FILE" "cos://${COS_BUCKET_ALIAS}/mc/$BACKUP_FILE"
-    if [ $? -eq 0 ]; then
-        echo "[BACKUP] ✓ 备份成功！$BACKUP_FILE 已上传到 COS"
-    else
-        echo "[BACKUP] ✗ 上传失败！"
-        exit 1
-    fi
-elif [ "$STORAGE_TYPE" = "s3" ]; then
-    echo "[BACKUP] 正在上传到 S3..."
-    aws s3 cp "$BACKUP_FILE" "s3://$S3_BUCKET/mc/$BACKUP_FILE" --endpoint-url "$S3_ENDPOINT"
-    if [ $? -eq 0 ]; then
-        echo "[BACKUP] ✓ 备份成功！$BACKUP_FILE 已上传到 S3"
-    else
-        echo "[BACKUP] ✗ 上传失败！"
-        exit 1
-    fi
-else
-    echo "[BACKUP] 错误: 不支持的存储类型 $STORAGE_TYPE，请使用 s3 或 cos"
+# 上传备份
+if ! upload_file "$BACKUP_FILE" "mc/$BACKUP_FILE"; then
+    log_error "备份上传失败"
     exit 1
 fi
+
+log_info "备份流程完成"
+exit 0
