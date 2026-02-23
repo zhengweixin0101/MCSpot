@@ -677,6 +677,71 @@
             font-size: 0.85em;
             color: #a0aec0;
         }
+
+        .archives-list {
+            margin-top: 15px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .archive-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .archive-item:last-child {
+            border-bottom: none;
+        }
+
+        .archive-name {
+            font-weight: 500;
+            color: #2d3748;
+        }
+
+        .archive-meta {
+            font-size: 0.9em;
+            color: #718096;
+            margin-top: 4px;
+        }
+
+        .archive-actions {
+            display: flex;
+            gap: 10px;
+        }
+        .archive-btn {
+            text-decoration: none;
+            font-weight: 500;
+            padding: 4px 12px;
+            border-radius: 4px;
+            transition: background 0.2s;
+            cursor: pointer;
+            border: none;
+            font-size: 0.9em;
+        }
+        .archive-download {
+            color: #3182ce;
+            background: #ebf8ff;
+        }
+        .archive-download:hover {
+            background: #bee3f8;
+            text-decoration: none;
+        }
+        .archive-delete {
+            color: #e53e3e;
+            background: #fff5f5;
+        }
+        .archive-delete:hover {
+            background: #fed7d7;
+        }
+        .archive-delete.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            color: #a0aec0;
+            background: #edf2f7;
+        }
     </style>
 </head>
 <body>
@@ -792,6 +857,20 @@
                 </div>
             </div>
         </div>
+
+        <% if (user.permissions.includes('archive_manager') || user.permissions.includes('admin')) { %>
+        <div class="card">
+            <h2 class="section-title" style="display: flex; justify-content: space-between; align-items: center;">
+                <span>存档管理</span>
+                <button id="refreshArchives" class="btn btn-secondary" style="padding: 4px 12px; font-size: 0.8em;">刷新</button>
+            </h2>
+            <div id="archivesContainer">
+                <div class="loading-container" style="min-height: 100px;">
+                    <div class="loading-spinner" style="width: 30px; height: 30px; border-width: 3px;"></div>
+                </div>
+            </div>
+        </div>
+        <% } %>
 
         <div class="card">
             <h2 class="section-title">用户信息</h2>
@@ -1273,6 +1352,153 @@
                 clearInterval(mcStatusPollingInterval);
             }
         });
+        // 存档管理
+        async function loadArchives() {
+            const container = document.getElementById('archivesContainer');
+            if (!container) return;
+            
+            container.innerHTML = `
+                <div class="loading-container" style="min-height: 100px;">
+                    <div class="loading-spinner" style="width: 30px; height: 30px; border-width: 3px;"></div>
+                    <p style="font-size: 0.9em; color: #718096; margin-top: 10px;">正在获取存档列表...</p>
+                </div>
+            `;
+            
+            try {
+                const response = await fetch('/api/archives', {
+                    headers: getAuthHeaders()
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    if (data.files.length === 0) {
+                        container.innerHTML = `
+                            <div style="text-align: center; padding: 30px; color: #718096;">
+                                <p>没有找到存档文件</p>
+                                ${data.message ? `<p style="font-size: 0.85em; margin-top: 5px;">${data.message}</p>` : ''}
+                            </div>
+                        `;
+                    } else {
+                        let html = '<div class="archives-list">';
+                        data.files.forEach(file => {
+                            // 格式化大小
+                            const size = (file.size / 1024 / 1024).toFixed(2) + ' MB';
+                            // 格式化时间
+                            const date = new Date(file.lastModified).toLocaleString();
+                            
+                            const isProtected = file.key.endsWith('world.zip');
+                            
+                            html += `
+                                <div class="archive-item">
+                                    <div class="archive-info">
+                                        <div class="archive-name">${file.name || file.key}</div>
+                                        <div class="archive-meta">
+                                            <span>${size}</span> • <span>${date}</span>
+                                        </div>
+                                    </div>
+                                    <div class="archive-actions">
+                                        <button class="archive-btn archive-download" onclick="initiateDownload('${file.key}', '${file.name || file.key}')">下载</button>
+                                        ${isProtected 
+                                            ? '<button class="archive-btn archive-delete disabled" title="这是启动服务器的依赖文件，不允许删除" disabled>删除</button>' 
+                                            : `<button class="archive-btn archive-delete" onclick="deleteArchive('${file.key}', '${file.name || file.key}')">删除</button>`
+                                        }
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        html += '</div>';
+                        container.innerHTML = html;
+                    }
+                } else {
+                    container.innerHTML = `<div class="message error show" style="margin: 0;">${data.message || '获取存档列表失败'}</div>`;
+                }
+            } catch (err) {
+                container.innerHTML = `<div class="message error show" style="margin: 0;">请求失败: ${err.message}</div>`;
+            }
+        }
+        
+        // 发起下载
+        async function initiateDownload(key, name) {
+            // 1. 确认下载意向（提示流量消耗）
+            if (!confirm(`准备下载 "${name}"\n注意：下载存档可能会消耗流量费用，确定要下载吗？`)) {
+                return;
+            }
+
+            // 2. 输入密码确认
+            const password = prompt("为了安全，请验证您的登录密码：");
+            if (password === null) return; // 用户取消
+
+            if (!password) {
+                alert('密码不能为空');
+                return;
+            }
+
+            try {
+                // 3. 请求后端验证密码并获取下载链接
+                const response = await fetch('/api/archives/download', {
+                    method: 'POST',
+                    headers: {
+                        ...getAuthHeaders(), // 这里已经包含了 Authorization: Basic ...
+                        'Content-Type': 'application/json'
+                    },
+                    // body 只需要 key, password
+                    // 这里的 password 是用户输入的确认密码，不是 Basic Auth 的密码
+                    body: JSON.stringify({ key, password })
+                });
+
+                const data = await response.json();
+
+                if (data.success && data.url) {
+                    // 4. 打开下载链接
+                    window.open(data.url, '_blank');
+                    // showMessage('验证成功，开始下载...', 'success');
+                } else {
+                    alert('下载失败: ' + (data.message || '未知错误'));
+                }
+            } catch (err) {
+                alert('请求失败: ' + err.message);
+            }
+        }
+
+        // 删除存档
+        async function deleteArchive(key, name) {
+            if (!confirm(`确定要删除存档 "${name}" 吗？\n\n注意：删除存档备份后无法恢复！`)) {
+                return;
+            }
+            
+            // 找到对应的删除按钮并禁用
+            const buttons = document.querySelectorAll('.archive-delete');
+            buttons.forEach(btn => btn.disabled = true);
+            
+            try {
+                const response = await fetch('/api/archives', {
+                    method: 'DELETE',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ key })
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    showMessage('删除成功', 'success');
+                    loadArchives(); // 重新加载列表
+                } else {
+                    showMessage('删除失败: ' + data.message, 'error');
+                    buttons.forEach(btn => btn.disabled = false);
+                }
+            } catch (err) {
+                showMessage('删除失败: ' + err.message, 'error');
+                buttons.forEach(btn => btn.disabled = false);
+            }
+        }
+
+        // 绑定刷新按钮
+        const refreshBtn = document.getElementById('refreshArchives');
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', loadArchives);
+        }
+        
+        // 初始加载
+        loadArchives();
     </script>
 </body>
 </html>

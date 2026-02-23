@@ -8,6 +8,9 @@ const redis = require('redis');
 const mcPing = require('mc-ping-updated');
 const crypto = require('crypto');
 const cookieParser = require('cookie-parser');
+const COS = require('cos-nodejs-sdk-v5');
+const { S3Client, ListObjectsV2Command, GetObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
+const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 
 dotenv.config();
 
@@ -92,6 +95,10 @@ const authenticate = async (req, res, next) => {
   if (authHeader && authHeader.startsWith('Basic ')) {
     const base64Credentials = authHeader.substring(6);
     authCredentials = Buffer.from(base64Credentials, 'base64').toString('ascii');
+  }
+  // 支持 Cookie (用于 Web 前端 AJAX 请求)
+  else if (req.cookies.auth_username && req.cookies.auth_password) {
+    authCredentials = `${req.cookies.auth_username}:${req.cookies.auth_password}`;
   }
   else {
     return res.status(401).json({
@@ -1186,6 +1193,215 @@ app.get('/terminal', webAuth, (req, res) => {
   });
 });
 
+// 获取存档列表
+app.get('/api/archives', authenticate, checkPermission('archive_manager'), async (req, res) => {
+  try {
+    const storageType = process.env.STORAGE_TYPE || 'cos';
+    let files = [];
+
+    if (storageType === 'cos') {
+      const cos = new COS({
+        SecretId: process.env.TENCENT_SECRET_ID,
+        SecretKey: process.env.TENCENT_SECRET_KEY,
+      });
+      const bucket = process.env.COS_BUCKET;
+      const region = process.env.COS_REGION;
+      // 默认路径为 mc/
+      const prefix = process.env.COS_PREFIX || 'mc/';
+
+      if (!bucket || !region) {
+        return res.json({ success: true, files: [], message: 'COS配置未完成' });
+      }
+
+      const data = await new Promise((resolve, reject) => {
+        cos.getBucket({
+          Bucket: bucket,
+          Region: region,
+          Prefix: prefix,
+        }, (err, data) => {
+          if (err) reject(err);
+          else resolve(data);
+        });
+      });
+      
+      files = (data.Contents || []).map(item => ({
+        key: item.Key,
+        name: item.Key.replace(new RegExp(`^${prefix}`), ''), // 去除前缀
+        size: parseInt(item.Size),
+        lastModified: item.LastModified
+      }));
+      
+    } else if (storageType === 's3') {
+              const s3 = new S3Client({
+                region: process.env.S3_REGION || 'auto',
+                endpoint: process.env.S3_ENDPOINT,
+                credentials: {
+                  accessKeyId: process.env.S3_ACCESS_KEY,
+                  secretAccessKey: process.env.S3_SECRET_KEY
+                },
+                forcePathStyle: true
+              });
+              const bucket = process.env.S3_BUCKET;
+      // 默认路径为 mc/
+      let prefix = process.env.S3_PREFIX || 'mc/';
+      
+      // S3 Prefix 不应以 / 开头，如果配置了 / 开头则去除
+      if (prefix.startsWith('/')) {
+        prefix = prefix.substring(1);
+      }
+              
+              if (!bucket) {
+                return res.json({ success: true, files: [], message: 'S3配置未完成' });
+              }
+
+      const command = new ListObjectsV2Command({
+        Bucket: bucket,
+        Prefix: prefix
+      });
+      const data = await s3.send(command);
+      
+      files = await Promise.all((data.Contents || []).map(async (item) => {
+        return {
+            key: item.Key,
+            name: item.Key.replace(new RegExp(`^${prefix}`), ''), // 去除前缀
+            size: item.Size,
+            lastModified: item.LastModified
+        };
+      }));
+    }
+
+    files.sort((a, b) => new Date(b.lastModified) - new Date(a.lastModified));
+
+    res.json({ success: true, files });
+  } catch (err) {
+    console.error('获取存档列表失败:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// 验证密码并获取下载链接
+app.post('/api/archives/download', authenticate, checkPermission('archive_manager'), async (req, res) => {
+  try {
+    const { key, password } = req.body;
+    
+    if (!key || !password) {
+      return res.status(400).json({ success: false, message: '参数不完整' });
+    }
+
+    const userId = req.auth.userId;
+    const userConfig = AUTH_PASSWORDS[userId];
+
+    if (!userConfig || userConfig.password !== password) {
+      return res.status(403).json({ success: false, message: '密码验证失败' });
+    }
+
+    const storageType = process.env.STORAGE_TYPE || 'cos';
+    let url = '';
+
+    if (storageType === 'cos') {
+      const cos = new COS({
+        SecretId: process.env.TENCENT_SECRET_ID,
+        SecretKey: process.env.TENCENT_SECRET_KEY,
+      });
+      const bucket = process.env.COS_BUCKET;
+      const region = process.env.COS_REGION;
+
+      url = cos.getObjectUrl({
+        Bucket: bucket,
+        Region: region,
+        Key: key,
+        Sign: true,
+        Expires: 3600
+      });
+    } else if (storageType === 's3') {
+      const s3 = new S3Client({
+        region: process.env.S3_REGION || 'auto',
+        endpoint: process.env.S3_ENDPOINT,
+        credentials: {
+          accessKeyId: process.env.S3_ACCESS_KEY,
+          secretAccessKey: process.env.S3_SECRET_KEY
+        },
+        forcePathStyle: true
+      });
+      const bucket = process.env.S3_BUCKET;
+
+      const getCommand = new GetObjectCommand({
+        Bucket: bucket,
+        Key: key
+      });
+      url = await getSignedUrl(s3, getCommand, { expiresIn: 3600 });
+    }
+
+    res.json({ success: true, url });
+
+  } catch (err) {
+    console.error('获取下载链接失败:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// 删除存档
+app.delete('/api/archives', authenticate, checkPermission('archive_manager'), async (req, res) => {
+  try {
+    const { key } = req.body;
+    
+    if (!key) {
+      return res.status(400).json({ success: false, message: '缺少文件key参数' });
+    }
+    
+    // 安全检查：不允许删除 world.zip
+    if (key.endsWith('world.zip')) {
+      return res.status(403).json({ success: false, message: '禁止删除 world.zip 存档' });
+    }
+
+    const storageType = process.env.STORAGE_TYPE || 'cos';
+    
+    if (storageType === 'cos') {
+      const cos = new COS({
+        SecretId: process.env.TENCENT_SECRET_ID,
+        SecretKey: process.env.TENCENT_SECRET_KEY,
+      });
+      const bucket = process.env.COS_BUCKET;
+      const region = process.env.COS_REGION;
+
+      await new Promise((resolve, reject) => {
+        cos.deleteObject({
+          Bucket: bucket,
+          Region: region,
+          Key: key,
+        }, (err, data) => {
+          if (err) reject(err);
+          else resolve(data);
+        });
+      });
+      
+    } else if (storageType === 's3') {
+      const s3 = new S3Client({
+        region: process.env.S3_REGION || 'auto',
+        endpoint: process.env.S3_ENDPOINT,
+        credentials: {
+          accessKeyId: process.env.S3_ACCESS_KEY,
+          secretAccessKey: process.env.S3_SECRET_KEY
+        },
+        forcePathStyle: true
+      });
+      const bucket = process.env.S3_BUCKET;
+
+      const command = new DeleteObjectCommand({
+        Bucket: bucket,
+        Key: key
+      });
+      
+      await s3.send(command);
+    }
+    
+    res.json({ success: true, message: '删除成功' });
+    
+  } catch (err) {
+    console.error('删除存档失败:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
 
 // API文档页面
 app.get('/docs', webAuth, (req, res) => {
