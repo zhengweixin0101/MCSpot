@@ -40,6 +40,7 @@ log_warn() {
 
 # 脚本锁函数
 script_lock() {
+    mkdir -p "$(dirname "$LOCK_FILE")"
     check_command flock
     exec 200>"$LOCK_FILE"
     if ! flock -n 200; then
