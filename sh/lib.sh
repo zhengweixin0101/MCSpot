@@ -22,8 +22,8 @@ API_BASE="${API_BASE:-http://localhost:3000}"
 AUTH_USERNAME="${AUTH_USERNAME:-username}"
 AUTH_PASSWORD="${AUTH_PASSWORD:-password}"
 SCREEN_NAME="${SCREEN_NAME:-mc_server}"
-STOP_FLAG_FILE="${MCS_DIR}/.server_stopped"
-LOCK_FILE="${MCS_DIR}/.script_lock"
+STOP_FLAG_FILE="${LIB_DIR}/tmp/.server_stopped"
+LOCK_FILE="${LIB_DIR}/tmp/.script_lock"
 
 # 日志函数
 log_info() {
@@ -40,7 +40,6 @@ log_warn() {
 
 # 脚本锁函数
 script_lock() {
-    mkdir -p "$(dirname "$LOCK_FILE")"
     check_command flock
     exec 200>"$LOCK_FILE"
     if ! flock -n 200; then
