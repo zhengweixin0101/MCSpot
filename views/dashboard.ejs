@@ -1419,13 +1419,13 @@
         
         // 发起下载
         async function initiateDownload(key, name) {
-            // 1. 确认下载意向（提示流量消耗）
+            // 1确认下载意向（提示流量消耗）
             if (!confirm(`准备下载 "${name}"\n注意：下载存档可能会产生流量费用，确定要下载吗？`)) {
                 return;
             }
 
-            // 2. 输入密码确认
-            const password = prompt("为了安全，请输入您的登录密码：");
+            // 输入密码确认
+            const password = prompt("为了安全，请输入您的登录密码以确认：");
             if (password === null) return; // 用户取消
 
             if (!password) {
@@ -1434,7 +1434,7 @@
             }
 
             try {
-                // 3. 请求后端验证密码并获取下载链接
+                // 请求后端验证密码并获取下载链接
                 const response = await fetch('/api/archives/download', {
                     method: 'POST',
                     headers: {
@@ -1449,7 +1449,7 @@
                 const data = await response.json();
 
                 if (data.success && data.url) {
-                    // 4. 打开下载链接
+                    // 打开下载链接
                     window.open(data.url, '_blank');
                     // showMessage('验证成功，开始下载...', 'success');
                 } else {
