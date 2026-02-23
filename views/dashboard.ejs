@@ -1420,7 +1420,7 @@
         // 发起下载
         async function initiateDownload(key, name) {
             // 1. 确认下载意向（提示流量消耗）
-            if (!confirm(`准备下载 "${name}"\n注意：下载存档可能会消耗流量费用，确定要下载吗？`)) {
+            if (!confirm(`准备下载 "${name}"\n注意：下载存档可能会产生流量费用，确定要下载吗？`)) {
                 return;
             }
 
