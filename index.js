@@ -527,7 +527,7 @@ async function getSshConfig(requestId, clientIp, userId) {
 }
 
 // 获取脚本列表
-app.get('/api/scripts', authenticate, checkPermission('run_ssh'), async (req, res) => {
+app.get('/api/scripts', authenticate, checkPermission('admin'), async (req, res) => {
   const requestId = req.auth.requestId;
   const clientIp = getClientIp(req);
   const remotePath = process.env.REMOTE_SCRIPT_PATH || '/opt/sh';
@@ -599,7 +599,7 @@ app.get('/api/scripts', authenticate, checkPermission('run_ssh'), async (req, re
 });
 
 // 执行脚本
-app.post('/api/scripts/:scriptName/exec', authenticate, checkPermission('run_ssh'), async (req, res) => {
+app.post('/api/scripts/:scriptName/exec', authenticate, checkPermission('admin'), async (req, res) => {
   const scriptName = req.params.scriptName;
   const clientIp = getClientIp(req);
   const requestId = req.auth.requestId;
@@ -664,7 +664,7 @@ app.post('/api/scripts/:scriptName/exec', authenticate, checkPermission('run_ssh
 });
 
 // 测试 SSH 连接
-app.post('/api/ssh/test', authenticate, checkPermission('run_ssh'), async (req, res) => {
+app.post('/api/ssh/test', authenticate, checkPermission('admin'), async (req, res) => {
   const clientIp = getClientIp(req);
   const requestId = req.auth.requestId;
 
@@ -744,7 +744,7 @@ app.post('/api/ssh/test', authenticate, checkPermission('run_ssh'), async (req, 
 });
 
 // 手动执行 SSH 命令
-app.post('/api/ssh/command', authenticate, checkPermission('run_ssh'), async (req, res) => {
+app.post('/api/ssh/command', authenticate, checkPermission('admin'), async (req, res) => {
   const { command } = req.body;
   const clientIp = getClientIp(req);
   const requestId = req.auth.requestId;
@@ -803,7 +803,7 @@ app.post('/api/ssh/command', authenticate, checkPermission('run_ssh'), async (re
 });
 
 // 发送 MC 服务器命令
-app.post('/api/mc/command', authenticate, checkPermission('run_ssh'), async (req, res) => {
+app.post('/api/mc/command', authenticate, checkPermission('admin'), async (req, res) => {
   const { command } = req.body;
   const clientIp = getClientIp(req);
   const requestId = req.auth.requestId;
@@ -850,7 +850,7 @@ app.post('/api/mc/command', authenticate, checkPermission('run_ssh'), async (req
 });
 
 // 获取 MC 服务器日志 (支持流式输出)
-app.get('/api/mc/logs', authenticate, checkPermission('run_ssh'), async (req, res) => {
+app.get('/api/mc/logs', authenticate, checkPermission('admin'), async (req, res) => {
   const clientIp = getClientIp(req);
   const requestId = req.auth.requestId;
   const lines = parseInt(req.query.lines) || 100;
@@ -1183,7 +1183,7 @@ app.get('/dashboard', webAuth, (req, res) => {
 // 终端页面
 app.get('/terminal', webAuth, (req, res) => {
   // 简单权限检查，如果没有权限则重定向回 dashboard
-  if (!req.auth.permissions.includes('run_ssh') && !req.auth.permissions.includes('admin')) {
+  if (!req.auth.permissions.includes('admin')) {
      return res.redirect('/dashboard');
   }
 
@@ -1194,7 +1194,7 @@ app.get('/terminal', webAuth, (req, res) => {
 });
 
 // 获取存档列表
-app.get('/api/archives', authenticate, checkPermission('archive_manager'), async (req, res) => {
+app.get('/api/archives', authenticate, checkPermission('admin'), async (req, res) => {
   try {
     const storageType = process.env.STORAGE_TYPE || 'cos';
     let files = [];
@@ -1280,7 +1280,7 @@ app.get('/api/archives', authenticate, checkPermission('archive_manager'), async
 });
 
 // 验证密码并获取下载链接
-app.post('/api/archives/download', authenticate, checkPermission('archive_manager'), async (req, res) => {
+app.post('/api/archives/download', authenticate, checkPermission('admin'), async (req, res) => {
   try {
     const { key, password } = req.body;
     
@@ -1341,7 +1341,7 @@ app.post('/api/archives/download', authenticate, checkPermission('archive_manage
 });
 
 // 删除存档
-app.delete('/api/archives', authenticate, checkPermission('archive_manager'), async (req, res) => {
+app.delete('/api/archives', authenticate, checkPermission('admin'), async (req, res) => {
   try {
     const { key } = req.body;
     

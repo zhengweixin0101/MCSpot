@@ -752,7 +752,7 @@
             </div>
             <div>
                 <a href="/docs" class="nav-link">API 文档</a>
-                <% if (user.permissions && (user.permissions.includes('run_ssh') || user.permissions.includes('admin'))) { %>
+                <% if (user.permissions && user.permissions.includes('admin')) { %>
                 <a href="/terminal" class="nav-link disabled" id="header-terminal-link" title="实例未启动，无法使用终端">终端</a>
                 <% } %>
             </div>
@@ -858,7 +858,7 @@
             </div>
         </div>
 
-        <% if (user.permissions.includes('archive_manager') || user.permissions.includes('admin')) { %>
+        <% if (user.permissions.includes('admin')) { %>
         <div class="card">
             <h2 class="section-title" style="display: flex; justify-content: space-between; align-items: center;">
                 <span>存档管理</span>

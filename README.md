@@ -35,6 +35,7 @@ MCSpot 是一个基于腾讯云 API 的 Minecraft 服务器按需启动系统。
   - [9. 发送命令](#9-发送命令)
   - [10. 脚本管理](#10-脚本管理)
   - [11. SSH 连接测试](#11-ssh-连接测试)
+  - [12. 存档管理](#12-存档管理)
 - [使用示例](#使用示例)
 - [错误排查](#错误排查)
 - [技术栈](#技术栈)
@@ -217,11 +218,10 @@ curl -u "admin:Admin@abc123456!" http://localhost:3000/api/instances
 
 | 权限 | 说明 | 可用操作 |
 |------|------|---------|
-| `admin` | 管理员权限 | 所有操作，包括查看日志 |
+| `admin` | 管理员权限 | 所有操作 |
 | `run_instance` | 创建实例 | 创建新的 CVM 实例 |
 | `terminate_instance` | 删除实例 | 删除 CVM 实例 |
 | `read_instance` | 读取实例信息 | 查询实例列表、服务器状态和 IP 地址 |
-| `run_ssh` | 运行 SSH | 执行远程脚本、发送 MC 命令、查看实时日志 |
 
 **注意**：`admin` 权限拥有所有权限，无需额外配置其他权限。
 
@@ -487,7 +487,7 @@ GET /api/mc/status
 GET /api/mc/logs
 ```
 
-**权限**: `run_ssh`
+**权限**: `admin`
 
 **参数**
 
@@ -527,7 +527,7 @@ data: {"log":"[10:00:10] [User Authenticator #1/INFO]: UUID of player Steve is .
 POST /api/mc/cmd
 ```
 
-**权限**: `run_ssh`
+**权限**: `admin`
 
 **请求体**
 ```json
@@ -559,7 +559,7 @@ POST /api/mc/cmd
 GET /api/scripts
 ```
 
-**权限**: `run_ssh`
+**权限**: `admin`
 
 **响应示例**
 
@@ -580,7 +580,7 @@ GET /api/scripts
 POST /api/scripts/:scriptName/exec
 ```
 
-**权限**: `run_ssh`
+**权限**: `admin`
 
 **响应示例**
 
@@ -605,7 +605,7 @@ POST /api/scripts/:scriptName/exec
 POST /api/ssh/test
 ```
 
-**权限**: `run_ssh`
+**权限**: `admin`
 
 **响应示例**
 
@@ -615,6 +615,96 @@ POST /api/ssh/test
   "success": true,
   "message": "SSH 连接测试成功",
   "ip": "1.2.3.4"
+}
+```
+
+---
+
+### 12. 存档管理
+
+**注意**：所有存档管理操作均需要 `admin` 权限。
+
+#### 获取存档列表
+
+获取存储桶中的所有 Minecraft 存档文件。
+
+**请求**
+```
+GET /api/archives
+```
+
+**权限**: `admin`
+
+**响应示例**
+
+✅ 成功：
+```json
+{
+  "success": true,
+  "archives": [
+    {
+      "Key": "mc/world_20240216_120000.zip",
+      "LastModified": "2024-02-16T12:00:00.000Z",
+      "Size": 1024000
+    }
+  ]
+}
+```
+
+#### 获取存档下载链接
+
+获取指定存档文件的临时下载链接（有效期 15 分钟）。
+
+**请求**
+```
+POST /api/archives/download
+```
+
+**权限**: `admin`
+
+**请求体**
+```json
+{
+  "key": "mc/world_20240216_120000.zip",
+  "password": "your_admin_password"
+}
+```
+
+**响应示例**
+
+✅ 成功：
+```json
+{
+  "success": true,
+  "url": "https://example.com/download/..."
+}
+```
+
+#### 删除存档
+
+删除指定的存档文件（**不可逆操作**）。
+
+**请求**
+```
+DELETE /api/archives
+```
+
+**权限**: `admin`
+
+**请求体**
+```json
+{
+  "key": "mc/world_20240216_120000.zip"
+}
+```
+
+**响应示例**
+
+✅ 成功：
+```json
+{
+  "success": true,
+  "message": "存档删除成功"
 }
 ```
 

@@ -496,7 +496,7 @@
             </div>
 
             <h3 style="color: #2d3748; margin: 25px 0 15px 0;">8. SSH连接测试</h3>
-            <p style="color: #4a5568; margin-bottom: 10px;">测试实例 SSH 连接是否可用</p>
+            <p style="color: #4a5568; margin-bottom: 10px;">测试实例 SSH 连接是否可用（仅管理员权限）</p>
             <div class="code-block">
                 <code>curl -u admin:password "<%= baseUrl %>/api/ssh/test"</code>
             </div>
@@ -515,6 +515,72 @@
   "error": "SSH连接失败: Error: All configured authentication methods failed"
 }</code>
                 </div>
+            </div>
+
+            <h3 style="color: #2d3748; margin: 25px 0 15px 0;">9. 发送命令</h3>
+            <p style="color: #4a5568; margin-bottom: 10px;">向 Minecraft 服务器发送控制台命令（仅管理员权限）</p>
+            <div class="code-block">
+                <code>curl -X POST -u admin:password -H "Content-Type: application/json" -d '{"command": "list"}' "<%= baseUrl %>/api/mc/command"</code>
+            </div>
+            <div style="margin-top: 10px; padding: 10px; background: #edf2f7; border-radius: 5px;">
+                <strong>成功响应示例：</strong>
+                <div class="code-block">
+                    <code>{
+  "success": true,
+  "output": "There are 0 of a max of 20 players online: "
+}</code>
+                </div>
+            </div>
+
+            <h3 style="color: #2d3748; margin: 25px 0 15px 0;">10. 脚本管理</h3>
+            <p style="color: #4a5568; margin-bottom: 10px;">获取可用脚本列表（仅管理员权限）</p>
+            <div class="code-block">
+                <code>curl -u admin:password "<%= baseUrl %>/api/scripts"</code>
+            </div>
+            <div style="margin-top: 10px; padding: 10px; background: #edf2f7; border-radius: 5px;">
+                <strong>成功响应示例：</strong>
+                <div class="code-block">
+                    <code>{
+  "success": true,
+  "scripts": ["backup.sh", "stop.sh"]
+}</code>
+                </div>
+            </div>
+
+            <p style="color: #4a5568; margin-top: 15px; margin-bottom: 10px;">执行脚本（仅管理员权限）</p>
+            <div class="code-block">
+                <code>curl -X POST -u admin:password "<%= baseUrl %>/api/scripts/backup.sh/exec"</code>
+            </div>
+            <div style="margin-top: 10px; padding: 10px; background: #edf2f7; border-radius: 5px;">
+                <strong>成功响应示例：</strong>
+                <div class="code-block">
+                    <code>{
+  "success": true,
+  "output": "Backup completed successfully."
+}</code>
+                </div>
+            </div>
+
+            <h3 style="color: #2d3748; margin: 25px 0 15px 0;">11. 获取实时日志</h3>
+            <p style="color: #4a5568; margin-bottom: 10px;">获取 Minecraft 服务器实时日志 (支持流式输出)（仅管理员权限）</p>
+            <div class="code-block">
+                <code>curl -u admin:password "<%= baseUrl %>/api/mc/logs?lines=100"</code>
+            </div>
+
+            <h3 style="color: #2d3748; margin: 25px 0 15px 0;">12. 存档管理</h3>
+            <p style="color: #4a5568; margin-bottom: 10px;">获取服务器存档列表（仅管理员权限）</p>
+            <div class="code-block">
+                <code>curl -u admin:password "<%= baseUrl %>/api/archives"</code>
+            </div>
+            
+            <p style="color: #4a5568; margin-top: 15px; margin-bottom: 10px;">获取存档下载链接（仅管理员权限）</p>
+            <div class="code-block">
+                <code>curl -X POST -u admin:password -H "Content-Type: application/json" -d '{"key":"mc/world.zip","password":"password"}' "<%= baseUrl %>/api/archives/download"</code>
+            </div>
+            
+            <p style="color: #4a5568; margin-top: 15px; margin-bottom: 10px;">删除存档（仅管理员权限）</p>
+            <div class="code-block">
+                <code>curl -X DELETE -u admin:password -H "Content-Type: application/json" -d '{"key":"mc/world.zip"}' "<%= baseUrl %>/api/archives"</code>
             </div>
         </div>
 
