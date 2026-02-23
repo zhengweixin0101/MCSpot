@@ -103,6 +103,70 @@
             font-size: 0.9em;
         }
 
+        .endpoint-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .endpoint-item {
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            background: #f8fafc;
+            transition: all 0.2s ease;
+        }
+
+        .endpoint-item:hover {
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            background: #fff;
+            border-color: #cbd5e0;
+        }
+
+        .endpoint-header {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .method {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 0.85em;
+            color: white;
+            background: #4299e1; /* Default blue */
+        }
+
+        .method.get {
+            background: #48bb78;
+        }
+
+        .method.post {
+            background: #4299e1;
+        }
+
+        .method.delete {
+            background: #f56565;
+        }
+
+        .path {
+            font-family: 'Courier New', monospace;
+            font-weight: 600;
+            color: #2d3748;
+            font-size: 1.1em;
+        }
+
+        .description {
+            color: #718096;
+            margin-top: 5px;
+            display: block;
+            line-height: 1.5;
+        }
+
         .footer {
             text-align: center;
             color: #718096;
@@ -231,8 +295,10 @@
             <h2>API 端点列表</h2>
             <ul class="endpoint-list">
                 <li class="endpoint-item">
-                    <span class="method">GET</span>
-                    <span class="path">/api/run-instance</span>
+                    <div class="endpoint-header">
+                        <span class="method get">GET</span>
+                        <span class="path">/api/run-instance</span>
+                    </div>
                     <span class="description">通过启动模板创建新的实例 (权限: run_instance)</span>
                     <div style="margin-top: 10px; padding: 10px; background: #edf2f7; border-radius: 5px;">
                         <strong>请求参数：</strong><br>
@@ -241,8 +307,10 @@
                 </li>
 
                 <li class="endpoint-item">
-                    <span class="method">GET</span>
-                    <span class="path">/api/terminate-instance</span>
+                    <div class="endpoint-header">
+                        <span class="method get">GET</span>
+                        <span class="path">/api/terminate-instance</span>
+                    </div>
                     <span class="description">删除当前账号下唯一的实例 (权限: terminate_instance)</span>
                     <div style="margin-top: 10px; padding: 10px; background: #edf2f7; border-radius: 5px;">
                         <strong>请求参数：</strong><br>
@@ -251,8 +319,10 @@
                 </li>
 
                 <li class="endpoint-item">
-                    <span class="method">GET</span>
-                    <span class="path">/api/instances</span>
+                    <div class="endpoint-header">
+                        <span class="method get">GET</span>
+                        <span class="path">/api/instances</span>
+                    </div>
                     <span class="description">查询当前账户下的所有实例 (权限: read_instance)</span>
                     <div style="margin-top: 10px; padding: 10px; background: #edf2f7; border-radius: 5px;">
                         <strong>请求参数：</strong><br>
@@ -261,8 +331,10 @@
                 </li>
 
                 <li class="endpoint-item">
-                    <span class="method">GET</span>
-                    <span class="path">/api/server-status</span>
+                    <div class="endpoint-header">
+                        <span class="method get">GET</span>
+                        <span class="path">/api/server-status</span>
+                    </div>
                     <span class="description">获取当前 Minecraft 服务器状态 (权限: read_instance)</span>
                     <div style="margin-top: 10px; padding: 10px; background: #edf2f7; border-radius: 5px;">
                         <strong>请求参数：</strong><br>
@@ -271,8 +343,10 @@
                 </li>
 
                 <li class="endpoint-item">
-                    <span class="method">GET</span>
-                    <span class="path">/api/auth-logs</span>
+                    <div class="endpoint-header">
+                        <span class="method get">GET</span>
+                        <span class="path">/api/auth-logs</span>
+                    </div>
                     <span class="description">获取操作日志（仅管理员）(权限: admin)</span>
                     <div style="margin-top: 10px; padding: 10px; background: #edf2f7; border-radius: 5px;">
                         <strong>请求参数：</strong><br>
@@ -281,8 +355,10 @@
                 </li>
 
                 <li class="endpoint-item">
-                    <span class="method">GET</span>
-                    <span class="path">/api/user-info</span>
+                    <div class="endpoint-header">
+                        <span class="method get">GET</span>
+                        <span class="path">/api/user-info</span>
+                    </div>
                     <span class="description">获取当前认证用户的信息 (权限: 任意)</span>
                     <div style="margin-top: 10px; padding: 10px; background: #edf2f7; border-radius: 5px;">
                         <strong>请求参数：</strong><br>
@@ -291,8 +367,10 @@
                 </li>
 
                 <li class="endpoint-item">
-                    <span class="method">GET</span>
-                    <span class="path">/health</span>
+                    <div class="endpoint-header">
+                        <span class="method get">GET</span>
+                        <span class="path">/health</span>
+                    </div>
                     <span class="description">健康检查（无需认证）</span>
                     <div style="margin-top: 10px; padding: 10px; background: #edf2f7; border-radius: 5px;">
                         <strong>请求参数：</strong><br>
