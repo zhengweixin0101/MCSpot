@@ -523,7 +523,7 @@ async function getSshConfig(requestId, clientIp, userId) {
 app.get('/api/scripts', authenticate, checkPermission('run_ssh'), async (req, res) => {
   const requestId = req.auth.requestId;
   const clientIp = getClientIp(req);
-  const remotePath = process.env.REMOTE_SCRIPT_PATH || '/op/sh';
+  const remotePath = process.env.REMOTE_SCRIPT_PATH || '/opt/sh';
   const localScriptsPath = path.join(__dirname, 'sh', 'scripts.json');
 
   try {
@@ -596,7 +596,7 @@ app.post('/api/scripts/:scriptName/exec', authenticate, checkPermission('run_ssh
   const scriptName = req.params.scriptName;
   const clientIp = getClientIp(req);
   const requestId = req.auth.requestId;
-  const remotePath = process.env.REMOTE_SCRIPT_PATH || '/root/sh';
+  const remotePath = process.env.REMOTE_SCRIPT_PATH || '/opt/sh';
 
   // 安全检查：防止路径遍历
   if (scriptName.includes('..') || scriptName.includes('/') || scriptName.includes('\\')) {
@@ -800,6 +800,7 @@ app.post('/api/mc/command', authenticate, checkPermission('run_ssh'), async (req
   const { command } = req.body;
   const clientIp = getClientIp(req);
   const requestId = req.auth.requestId;
+  const remotePath = process.env.REMOTE_SCRIPT_PATH || '/opt/sh';
 
   if (!command || typeof command !== 'string' || command.trim().length === 0) {
     return res.status(400).json({ success: false, message: '命令不能为空' });
@@ -816,7 +817,7 @@ app.post('/api/mc/command', authenticate, checkPermission('run_ssh'), async (req
 
     conn.on('ready', () => {
       // 从 .env 加载配置并发送命令到 screen 会话
-      const cmd = `source /opt/.env && screen -S "$SCREEN_NAME" -p 0 -X stuff "${safeCommand}\\r"`;
+      const cmd = `source ${remotePath}/.env && screen -S "$SCREEN_NAME" -p 0 -X stuff "${safeCommand}\\r"`;
       
       conn.exec(cmd, (err, stream) => {
         if (err) {
@@ -847,6 +848,7 @@ app.get('/api/mc/logs', authenticate, checkPermission('run_ssh'), async (req, re
   const requestId = req.auth.requestId;
   const lines = parseInt(req.query.lines) || 100;
   const isStream = req.query.stream === 'true';
+  const remotePath = process.env.REMOTE_SCRIPT_PATH || '/opt/sh';
 
   try {
     const { config } = await getSshConfig(requestId, clientIp, req.auth.userId);
@@ -866,10 +868,10 @@ app.get('/api/mc/logs', authenticate, checkPermission('run_ssh'), async (req, re
       if (isStream) {
         // 流式：先输出最后 N 行，然后持续跟踪
         // 使用 tail -f -n N
-        cmd = `source /opt/.env && tail -f -n ${lines} "$MCS_DIR/logs/latest.log"`;
+        cmd = `source ${remotePath}/.env && tail -f -n ${lines} "$MCS_DIR/logs/latest.log"`;
       } else {
         // 非流式：只输出最后 N 行
-        cmd = `source /opt/.env && tail -n ${lines} "$MCS_DIR/logs/latest.log"`;
+        cmd = `source ${remotePath}/.env && tail -n ${lines} "$MCS_DIR/logs/latest.log"`;
       }
       
       conn.exec(cmd, (err, stream) => {
