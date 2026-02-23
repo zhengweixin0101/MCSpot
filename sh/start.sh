@@ -72,7 +72,8 @@ else
         exit 1
     fi
     log_info "启动 Minecraft 服务端..."
-    screen -dmS "$SCREEN_NAME" java -Xms"$JAVA_MIN_MEM" -Xmx"$JAVA_MAX_MEM" -jar "$MC_JAR_PATH" nogui
+    # 启动 screen 时关闭 fd 200，防止锁泄漏
+    screen -dmS "$SCREEN_NAME" bash -c "exec 200>&-; java -Xms\"$JAVA_MIN_MEM\" -Xmx\"$JAVA_MAX_MEM\" -jar \"$MC_JAR_PATH\" nogui"
     log_info "Minecraft 服务端已在 screen 会话中启动: $SCREEN_NAME"
 fi
 
@@ -83,7 +84,8 @@ if [ -f "$AUTO_SHUTDOWN" ]; then
         log_warn "自动关服脚本已在运行"
     else
         log_info "启动自动关服脚本..."
-        nohup "$AUTO_SHUTDOWN" >> "$AUTO_SHUTDOWN_LOG" 2>&1 &
+        # 启动后台进程时关闭 fd 200，防止锁泄漏
+        nohup "$AUTO_SHUTDOWN" >> "$AUTO_SHUTDOWN_LOG" 2>&1 200>&- &
         log_info "自动关服脚本已后台运行"
     fi
 else

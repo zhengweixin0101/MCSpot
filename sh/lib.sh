@@ -42,9 +42,14 @@ log_warn() {
 script_lock() {
     mkdir -p "$(dirname "$LOCK_FILE")"
     check_command flock
+    
+    # 使用文件描述符 200 作为锁文件
+    # flock -n 表示非阻塞模式，如果锁被占用立即失败
     exec 200>"$LOCK_FILE"
     if ! flock -n 200; then
         log_error "另一个脚本正在运行，当前操作取消"
+        # 尝试获取占用锁的进程信息
+        fuser "$LOCK_FILE" 2>/dev/null || true
         exit 1
     fi
 }
