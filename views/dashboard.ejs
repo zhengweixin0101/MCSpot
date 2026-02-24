@@ -742,6 +742,12 @@
             color: #a0aec0;
             background: #edf2f7;
         }
+
+        /* 平滑高度过渡容器 */
+        .smooth-height-wrapper {
+            transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow: hidden;
+        }
     </style>
 </head>
 <body>
@@ -764,96 +770,94 @@
                 <span id="refresh-indicator" style="display: none;" class="refresh-indicator"></span>
             </h2>
 
-            <div id="message-container"></div>
+            <div id="dynamic-content-wrapper" class="smooth-height-wrapper">
+                <div id="message-container"></div>
 
-            <div id="loading" class="loading-container">
-                <div class="loading-spinner"></div>
-                <p class="loading-text">正在加载实例信息...</p>
-            </div>
-
-            <div id="no-instance" class="no-instance" style="display: none;">
-                <p>当前没有运行的Minecraft实例</p>
-                <% if (user.permissions.includes('run_instance') || user.permissions.includes('admin')) { %>
-                <button class="btn btn-primary" onclick="createServer()">创建实例</button>
-                <% } %>
-            </div>
-
-            <div id="server-info" style="display: none;">
-                <div class="server-status">
-                    <div id="status-indicator" class="status-indicator pending"></div>
-                    <span id="status-text" class="status-text">检查中...</span>
+                <div id="loading" class="loading-container">
+                    <div class="loading-spinner"></div>
+                    <p class="loading-text">正在加载实例信息...</p>
                 </div>
 
-                <div class="user-info-card" id="mc-status-container" style="display: none;">
-                    <div class="user-info-row" id="mc-online-card">
-                        <span class="user-info-label">MCS 状态</span>
-                        <span class="user-info-value" id="mc-online-status">检查中...</span>
-                    </div>
-                    <div class="user-info-row">
-                        <span class="user-info-label">在线玩家</span>
-                        <span class="user-info-value" id="mc-online-players">-</span>
-                    </div>
-                    <div class="user-info-row">
-                        <span class="user-info-label">游戏版本</span>
-                        <span class="user-info-value" id="mc-version">-</span>
-                    </div>
-                </div>
-
-                <div class="mc-motd" id="mc-motd-container" style="display: none;">
-                    <div class="mc-motd-label">服务器公告 (MOTD)</div>
-                    <div class="mc-motd-content" id="mc-motd">-</div>
-                </div>
-
-                <div class="mc-players-list" id="mc-players-container" style="display: none;">
-                    <div class="mc-players-label">在线玩家列表</div>
-                    <div id="mc-players-list"></div>
-                </div>
-
-                <div class="mc-cache-hint" style="display: none; font-size: 0.8em; color: #718096; margin-bottom: 15px; text-align: center;">
-                    <i class="info-icon">ℹ️</i> 以上信息调用第三方接口查询，数据有2分钟缓存
-                </div>
-
-                <div class="instance-info">
-                    <div class="info-row">
-                        <span class="info-label">实例ID</span>
-                        <span class="info-value" id="instance-id">-</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">实例状态</span>
-                        <span class="info-value" id="instance-state">-</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">公网IP</span>
-                        <span class="info-value highlight" id="public-ip">等待中...</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">内网IP</span>
-                        <span class="info-value" id="private-ip">-</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">MC游戏端口</span>
-                        <span class="info-value highlight" id="mc-port">-</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">服务器地址</span>
-                        <span class="info-value highlight" id="server-address">-</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">创建时间</span>
-                        <span class="info-value" id="creation-time">-</span>
-                    </div>
-                </div>
-
-                <div class="actions">
-                    <button class="btn btn-warning" onclick="refreshStatus()">刷新状态</button>
-                    <button id="btn-copy-address" class="btn btn-primary" onclick="copyServerAddress()" style="display: none;">复制服务器地址</button>
-                    <% if (user.permissions.includes('terminate_instance') || user.permissions.includes('admin')) { %>
-                    <button id="btn-stop" class="btn btn-danger" onclick="terminateServer()">删除实例</button>
+                <div id="no-instance" class="no-instance" style="display: none;">
+                    <p>当前没有运行的Minecraft实例</p>
+                    <% if (user.permissions.includes('run_instance') || user.permissions.includes('admin')) { %>
+                    <button class="btn btn-primary" onclick="createServer()">创建实例</button>
                     <% } %>
                 </div>
 
-                <div id="copy-success-msg" style="display: none; margin-top: 15px; padding: 12px; background: #d1ecf1; border-left: 4px solid #17a2b8; border-radius: 8px; color: #0c5460; font-size: 0.9em; text-align: left;">
-                    复制成功！<游戏版本：<%= mcConfig.version || '未知' %>> 打开游戏 → 多人游戏 → 直接连接，输入服务器地址。
+                <div id="server-info" style="display: none;">
+                    <div class="server-status">
+                        <div id="status-indicator" class="status-indicator pending"></div>
+                        <span id="status-text" class="status-text">检查中...</span>
+                    </div>
+
+                    <div class="user-info-card" id="mc-status-container" style="display: none;">
+                        <div class="user-info-row" id="mc-online-card">
+                            <span class="user-info-label">MCS 状态</span>
+                            <span class="user-info-value" id="mc-online-status">检查中...</span>
+                        </div>
+                        <div class="user-info-row">
+                            <span class="user-info-label">在线玩家</span>
+                            <span class="user-info-value" id="mc-online-players">-</span>
+                        </div>
+                        <div class="user-info-row">
+                            <span class="user-info-label">游戏版本</span>
+                            <span class="user-info-value" id="mc-version">-</span>
+                        </div>
+                    </div>
+
+                    <div class="mc-motd" id="mc-motd-container" style="display: none;">
+                        <div class="mc-motd-label">服务器公告 (MOTD)</div>
+                        <div class="mc-motd-content" id="mc-motd">-</div>
+                    </div>
+
+                    <div class="mc-players-list" id="mc-players-container" style="display: none;">
+                        <div class="mc-players-label">在线玩家列表</div>
+                        <div id="mc-players-list"></div>
+                    </div>
+
+                    <div class="instance-info">
+                        <div class="info-row">
+                            <span class="info-label">实例ID</span>
+                            <span class="info-value" id="instance-id">-</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">实例状态</span>
+                            <span class="info-value" id="instance-state">-</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">公网IP</span>
+                            <span class="info-value highlight" id="public-ip">等待中...</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">内网IP</span>
+                            <span class="info-value" id="private-ip">-</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">MC游戏端口</span>
+                            <span class="info-value highlight" id="mc-port">-</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">服务器地址</span>
+                            <span class="info-value highlight" id="server-address">-</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">创建时间</span>
+                            <span class="info-value" id="creation-time">-</span>
+                        </div>
+                    </div>
+
+                    <div class="actions">
+                        <button class="btn btn-warning" onclick="refreshStatus()">刷新状态</button>
+                        <button id="btn-copy-address" class="btn btn-primary" onclick="copyServerAddress()" style="display: none;">复制服务器地址</button>
+                        <% if (user.permissions.includes('terminate_instance') || user.permissions.includes('admin')) { %>
+                        <button id="btn-stop" class="btn btn-danger" onclick="terminateServer()">删除实例</button>
+                        <% } %>
+                    </div>
+
+                    <div id="copy-success-msg" style="display: none; margin-top: 15px; padding: 12px; background: #d1ecf1; border-left: 4px solid #17a2b8; border-radius: 8px; color: #0c5460; font-size: 0.9em; text-align: left;">
+                        复制成功！<游戏版本：<%= mcConfig.version || '未知' %>> 打开游戏 → 多人游戏 → 直接连接，输入服务器地址。
+                    </div>
                 </div>
             </div>
         </div>
@@ -912,6 +916,66 @@
     </div>
 
     <script>
+        // 平滑高度过渡助手函数
+        // 挂载在 element 上的属性: _heightTransitionTimeout
+
+        async function updateDynamicContent(actionOrElementId, action) {
+            let wrapper;
+            let callback;
+
+            if (typeof actionOrElementId === 'string') {
+                wrapper = document.getElementById(actionOrElementId);
+                callback = action;
+            } else if (typeof actionOrElementId === 'function') {
+                // 兼容旧用法，默认是 dynamic-content-wrapper
+                wrapper = document.getElementById('dynamic-content-wrapper');
+                callback = actionOrElementId;
+            } else {
+                // 假设是 element 对象
+                wrapper = actionOrElementId;
+                callback = action;
+            }
+
+            if (!wrapper) {
+                if (callback) await callback();
+                return;
+            }
+
+            // 清除之前的清理定时器
+            if (wrapper._heightTransitionTimeout) {
+                clearTimeout(wrapper._heightTransitionTimeout);
+            }
+
+            // 确保添加了类
+            if (!wrapper.classList.contains('smooth-height-wrapper')) {
+                wrapper.classList.add('smooth-height-wrapper');
+            }
+
+            // 固定当前高度
+            const currentHeight = wrapper.offsetHeight;
+            wrapper.style.height = currentHeight + 'px';
+
+            // 执行DOM更新
+            if (callback) await callback();
+
+            // 测量新高度
+            wrapper.style.height = 'auto';
+            const newHeight = wrapper.offsetHeight;
+
+            // 恢复到旧高度并强制重绘
+            wrapper.style.height = currentHeight + 'px';
+            wrapper.offsetHeight; // 强制重绘
+
+            // 动画过渡到新高度
+            wrapper.style.height = newHeight + 'px';
+
+            // 动画结束后清理
+            wrapper._heightTransitionTimeout = setTimeout(() => {
+                wrapper.style.height = 'auto';
+                wrapper._heightTransitionTimeout = null;
+            }, 300);
+        }
+
         // 设置当前年份
         document.getElementById('current-year').textContent = new Date().getFullYear();
 
@@ -976,11 +1040,15 @@
 
         // 显示消息
         function showMessage(message, type = 'info') {
-            const container = document.getElementById('message-container');
-            container.innerHTML = `<div class="message ${type} show">${message}</div>`;
-            setTimeout(() => {
-                container.innerHTML = '';
-            }, 5000);
+            updateDynamicContent(() => {
+                const container = document.getElementById('message-container');
+                container.innerHTML = `<div class="message ${type} show">${message}</div>`;
+                setTimeout(() => {
+                    updateDynamicContent(() => {
+                        container.innerHTML = '';
+                    });
+                }, 5000);
+            });
         }
 
         // 轮询IP的定时器
@@ -1013,64 +1081,66 @@
 
         // 更新Minecraft服务器状态显示
         function updateMcServerStatus(data) {
-            const mcStatusContainer = document.getElementById('mc-status-container');
-            const mcCacheHint = document.querySelector('.mc-cache-hint');
-            if (!mcStatusContainer) return;
+            updateDynamicContent(() => {
+                const mcStatusContainer = document.getElementById('mc-status-container');
+                const mcCacheHint = document.querySelector('.mc-cache-hint');
+                if (!mcStatusContainer) return;
 
-            mcStatusContainer.style.display = 'grid';
-            if (mcCacheHint) {
-                mcCacheHint.style.display = 'none';
-            }
+                mcStatusContainer.style.display = 'grid';
+                if (mcCacheHint) {
+                    mcCacheHint.style.display = 'none';
+                }
 
-            // 更新在线状态
-            const onlineCard = document.getElementById('mc-online-card');
-            const onlineStatus = document.getElementById('mc-online-status');
-            const onlinePlayers = document.getElementById('mc-online-players');
+                // 更新在线状态
+                const onlineCard = document.getElementById('mc-online-card');
+                const onlineStatus = document.getElementById('mc-online-status');
+                const onlinePlayers = document.getElementById('mc-online-players');
 
-            if (data.mcOnline) {
-                onlineCard.className = 'user-info-row mc-status-card-online';
-                onlineStatus.textContent = '在线';
-            } else {
-                onlineCard.className = 'user-info-row mc-status-card-offline';
-                onlineStatus.textContent = '离线';
-            }
+                if (data.mcOnline) {
+                    onlineCard.className = 'user-info-row mc-status-card-online';
+                    onlineStatus.textContent = '在线';
+                } else {
+                    onlineCard.className = 'user-info-row mc-status-card-offline';
+                    onlineStatus.textContent = '离线';
+                }
 
-            // 更新玩家数
-            if (data.playersOnline !== undefined && data.playersMax !== undefined) {
-                onlinePlayers.textContent = `${data.playersOnline} / ${data.playersMax}`;
-            }
+                // 更新玩家数
+                if (data.playersOnline !== undefined && data.playersMax !== undefined) {
+                    onlinePlayers.textContent = `${data.playersOnline} / ${data.playersMax}`;
+                }
 
-            // 更新版本
-            if (data.version) {
-                document.getElementById('mc-version').textContent = data.version;
-            }
+                // 更新版本
+                if (data.version) {
+                    document.getElementById('mc-version').textContent = data.version;
+                }
 
-            // 更新MOTD (服务器公告)
-            if (data.motd) {
-                const motdContainer = document.getElementById('mc-motd-container');
-                const motdText = document.getElementById('mc-motd');
-                motdText.textContent = data.motd;
-                motdContainer.style.display = 'block';
-            }
+                // 更新MOTD (服务器公告)
+                if (data.motd) {
+                    const motdContainer = document.getElementById('mc-motd-container');
+                    const motdText = document.getElementById('mc-motd');
+                    motdText.textContent = data.motd;
+                    motdContainer.style.display = 'block';
+                }
 
-            // 更新玩家列表
-            if (data.playerList && data.playerList.length > 0) {
-                const playersContainer = document.getElementById('mc-players-container');
-                const playersList = document.getElementById('mc-players-list');
-                
-                let playersHtml = '';
-                data.playerList.forEach(player => {
-                    playersHtml += `<div class="player-item">
-                        <span class="player-name">${player.name}</span>
-                        <span class="player-uuid">${player.uuid}</span>
-                    </div>`;
-                });
-                
-                playersList.innerHTML = playersHtml;
-                playersContainer.style.display = 'block';
-            } else {
-                document.getElementById('mc-players-container').style.display = 'none';
-            }
+                // 更新玩家列表
+                if (data.playerList && data.playerList.length > 0) {
+                    const playersContainer = document.getElementById('mc-players-container');
+                    const playersList = document.getElementById('mc-players-list');
+                    
+                    let playersHtml = '';
+                    data.playerList.forEach(player => {
+                        playersHtml += `<div class="player-item">
+                            <span class="player-name">${player.name}</span>
+                            <span class="player-uuid">${player.uuid}</span>
+                        </div>`;
+                    });
+                    
+                    playersList.innerHTML = playersHtml;
+                    playersContainer.style.display = 'block';
+                } else {
+                    document.getElementById('mc-players-container').style.display = 'none';
+                }
+            });
         }
 
         // 创建服务器
@@ -1144,10 +1214,14 @@
             navigator.clipboard.writeText(serverAddress).then(() => {
                 const copyMsg = document.getElementById('copy-success-msg');
                 if (copyMsg) {
-                    copyMsg.style.display = 'block';
-                    setTimeout(() => {
-                        copyMsg.style.display = 'none';
-                    }, 5000);
+                    updateDynamicContent(() => {
+                        copyMsg.style.display = 'block';
+                        setTimeout(() => {
+                            updateDynamicContent(() => {
+                                copyMsg.style.display = 'none';
+                            });
+                        }, 5000);
+                    });
                 }
             }).catch(err => {
                 showMessage('复制失败: ' + err.message, 'error');
@@ -1158,6 +1232,9 @@
         async function loadLogs() {
             if (!USER_PERMISSIONS.includes('admin')) return;
 
+            const container = document.getElementById('logs-container');
+            if (!container) return;
+
             try {
                 const response = await fetch('/api/auth-logs?limit=20', {
                     headers: getAuthHeaders()
@@ -1165,20 +1242,21 @@
                 const data = await response.json();
 
                 if (data.success && data.logs) {
-                    const container = document.getElementById('logs-container');
-                    let html = '<div class="logs-table-wrapper"><table class="logs-table"><thead><tr><th>时间</th><th>操作</th><th>用户</th><th>IP</th><th>详情</th></tr></thead><tbody>';
-                    data.logs.forEach(log => {
-                        const opClass = log.operation.includes('SUCCESS') ? 'success' : (log.operation.includes('ERROR') ? 'error' : 'warning');
-                        html += `<tr>
-                            <td>${new Date(log.timestamp).toLocaleString('zh-CN')}</td>
-                            <td><span class="log-operation ${opClass}">${log.operation}</span></td>
-                            <td>${log.userId}</td>
-                            <td>${log.clientIp}</td>
-                            <td>${log.details}</td>
-                        </tr>`;
+                    await updateDynamicContent(container, async () => {
+                        let html = '<div class="logs-table-wrapper"><table class="logs-table"><thead><tr><th>时间</th><th>操作</th><th>用户</th><th>IP</th><th>详情</th></tr></thead><tbody>';
+                        data.logs.forEach(log => {
+                            const opClass = log.operation.includes('SUCCESS') ? 'success' : (log.operation.includes('ERROR') ? 'error' : 'warning');
+                            html += `<tr>
+                                <td>${new Date(log.timestamp).toLocaleString('zh-CN')}</td>
+                                <td><span class="log-operation ${opClass}">${log.operation}</span></td>
+                                <td>${log.userId}</td>
+                                <td>${log.clientIp}</td>
+                                <td>${log.details}</td>
+                            </tr>`;
+                        });
+                        html += '</tbody></table></div>';
+                        container.innerHTML = html;
                     });
-                    html += '</tbody></table></div>';
-                    container.innerHTML = html;
                 }
             } catch (error) {
                 console.error('加载日志失败:', error);
@@ -1196,113 +1274,115 @@
                 });
                 const data = await response.json();
 
-                if (data.success) {
-                    const noInstanceDiv = document.getElementById('no-instance');
-                    const serverInfoDiv = document.getElementById('server-info');
-                    loadingDiv.style.display = 'none';
+                await updateDynamicContent(() => {
+                    if (data.success) {
+                        const noInstanceDiv = document.getElementById('no-instance');
+                        const serverInfoDiv = document.getElementById('server-info');
+                        loadingDiv.style.display = 'none';
 
-                    if (data.instances.length === 0) {
-                        noInstanceDiv.style.display = 'block';
-                        serverInfoDiv.style.display = 'none';
-                        const terminalLink = document.getElementById('header-terminal-link');
-                        if (terminalLink) {
-                            terminalLink.classList.add('disabled');
-                            terminalLink.title = '实例未启动，无法使用终端';
-                        }
-                        if (ipPollingInterval) {
-                            clearInterval(ipPollingInterval);
-                            ipPollingInterval = null;
-                        }
-                        if (mcStatusPollingInterval) {
-                            clearInterval(mcStatusPollingInterval);
-                            mcStatusPollingInterval = null;
-                        }
-                    } else if (data.instances.length === 1) {
-                        const instance = data.instances[0];
-                        noInstanceDiv.style.display = 'none';
-                        serverInfoDiv.style.display = 'block';
-
-                        document.getElementById('instance-id').textContent = instance.instanceId;
-                        document.getElementById('instance-state').textContent = instance.instanceState;
-                        document.getElementById('creation-time').textContent = new Date(instance.creationTime).toLocaleString('zh-CN');
-
-                        const statusIndicator = document.getElementById('status-indicator');
-                        const statusText = document.getElementById('status-text');
-                        const btnCopyAddress = document.getElementById('btn-copy-address');
-
-                        if (instance.instanceState === 'RUNNING') {
-                            statusIndicator.className = 'status-indicator running';
-                            statusText.textContent = '运行中';
-                            const terminalLink = document.getElementById('header-terminal-link');
-                            if (terminalLink) {
-                                terminalLink.classList.remove('disabled');
-                                terminalLink.title = '';
-                            }
-                        } else if (instance.instanceState === 'STOPPED') {
-                            statusIndicator.className = 'status-indicator stopped';
-                            statusText.textContent = '已停止';
+                        if (data.instances.length === 0) {
+                            noInstanceDiv.style.display = 'block';
+                            serverInfoDiv.style.display = 'none';
                             const terminalLink = document.getElementById('header-terminal-link');
                             if (terminalLink) {
                                 terminalLink.classList.add('disabled');
                                 terminalLink.title = '实例未启动，无法使用终端';
-                            }
-                        } else {
-                            statusIndicator.className = 'status-indicator pending';
-                            statusText.textContent = getStateText(instance.instanceState);
-                            const terminalLink = document.getElementById('header-terminal-link');
-                            if (terminalLink) {
-                                terminalLink.classList.add('disabled');
-                                terminalLink.title = '实例未启动，无法使用终端';
-                            }
-                        }
-
-                        if (!instance.publicIp || instance.publicIp === null) {
-                            document.getElementById('public-ip').textContent = '等待分配...';
-                            document.getElementById('private-ip').textContent = instance.privateIp || '-';
-                            document.getElementById('server-address').textContent = '-';
-                            if (btnCopyAddress) {
-                                btnCopyAddress.style.display = 'none';
                             }
                             if (ipPollingInterval) {
                                 clearInterval(ipPollingInterval);
+                                ipPollingInterval = null;
                             }
-                            // 每2秒刷新所有状态
-                            ipPollingInterval = setInterval(() => {
-                                refreshStatus();
-                            }, 2000);
-                        } else {
-                            const serverAddress = instance.publicIp + ':' + (MC_CONFIG && MC_CONFIG.port ? MC_CONFIG.port : 25565);
-                            document.getElementById('public-ip').textContent = instance.publicIp;
-                            document.getElementById('private-ip').textContent = instance.privateIp || '-';
-                            document.getElementById('server-address').textContent = serverAddress;
-                            if (btnCopyAddress) {
-                                btnCopyAddress.style.display = 'inline-block';
-                            }
-                            // 获取MC服务器实时状态
-                            fetchMcServerStatus(instance.publicIp);
-                            // 清除旧的轮询
                             if (mcStatusPollingInterval) {
                                 clearInterval(mcStatusPollingInterval);
+                                mcStatusPollingInterval = null;
                             }
-                            // 每5秒获取一次MC服务器状态
-                            mcStatusPollingInterval = setInterval(() => {
+                        } else if (data.instances.length === 1) {
+                            const instance = data.instances[0];
+                            noInstanceDiv.style.display = 'none';
+                            serverInfoDiv.style.display = 'block';
+
+                            document.getElementById('instance-id').textContent = instance.instanceId;
+                            document.getElementById('instance-state').textContent = instance.instanceState;
+                            document.getElementById('creation-time').textContent = new Date(instance.creationTime).toLocaleString('zh-CN');
+
+                            const statusIndicator = document.getElementById('status-indicator');
+                            const statusText = document.getElementById('status-text');
+                            const btnCopyAddress = document.getElementById('btn-copy-address');
+
+                            if (instance.instanceState === 'RUNNING') {
+                                statusIndicator.className = 'status-indicator running';
+                                statusText.textContent = '运行中';
+                                const terminalLink = document.getElementById('header-terminal-link');
+                                if (terminalLink) {
+                                    terminalLink.classList.remove('disabled');
+                                    terminalLink.title = '';
+                                }
+                            } else if (instance.instanceState === 'STOPPED') {
+                                statusIndicator.className = 'status-indicator stopped';
+                                statusText.textContent = '已停止';
+                                const terminalLink = document.getElementById('header-terminal-link');
+                                if (terminalLink) {
+                                    terminalLink.classList.add('disabled');
+                                    terminalLink.title = '实例未启动，无法使用终端';
+                                }
+                            } else {
+                                statusIndicator.className = 'status-indicator pending';
+                                statusText.textContent = getStateText(instance.instanceState);
+                                const terminalLink = document.getElementById('header-terminal-link');
+                                if (terminalLink) {
+                                    terminalLink.classList.add('disabled');
+                                    terminalLink.title = '实例未启动，无法使用终端';
+                                }
+                            }
+
+                            if (!instance.publicIp || instance.publicIp === null) {
+                                document.getElementById('public-ip').textContent = '等待分配...';
+                                document.getElementById('private-ip').textContent = instance.privateIp || '-';
+                                document.getElementById('server-address').textContent = '-';
+                                if (btnCopyAddress) {
+                                    btnCopyAddress.style.display = 'none';
+                                }
+                                if (ipPollingInterval) {
+                                    clearInterval(ipPollingInterval);
+                                }
+                                // 每2秒刷新所有状态
+                                ipPollingInterval = setInterval(() => {
+                                    refreshStatus();
+                                }, 2000);
+                            } else {
+                                const serverAddress = instance.publicIp + ':' + (MC_CONFIG && MC_CONFIG.port ? MC_CONFIG.port : 25565);
+                                document.getElementById('public-ip').textContent = instance.publicIp;
+                                document.getElementById('private-ip').textContent = instance.privateIp || '-';
+                                document.getElementById('server-address').textContent = serverAddress;
+                                if (btnCopyAddress) {
+                                    btnCopyAddress.style.display = 'inline-block';
+                                }
+                                // 获取MC服务器实时状态
                                 fetchMcServerStatus(instance.publicIp);
-                            }, 5000);
-                            // IP已分配，继续每5秒刷新所有状态
-                            if (ipPollingInterval) {
-                                clearInterval(ipPollingInterval);
+                                // 清除旧的轮询
+                                if (mcStatusPollingInterval) {
+                                    clearInterval(mcStatusPollingInterval);
+                                }
+                                // 每5秒获取一次MC服务器状态
+                                mcStatusPollingInterval = setInterval(() => {
+                                    fetchMcServerStatus(instance.publicIp);
+                                }, 5000);
+                                // IP已分配，继续每5秒刷新所有状态
+                                if (ipPollingInterval) {
+                                    clearInterval(ipPollingInterval);
+                                }
+                                ipPollingInterval = setInterval(() => {
+                                    refreshStatus();
+                                }, 5000);
                             }
-                            ipPollingInterval = setInterval(() => {
-                                refreshStatus();
-                            }, 5000);
+                        } else {
+                            showMessage('错误：存在多个实例', 'error');
+                            loadingDiv.style.display = 'none';
                         }
                     } else {
-                        showMessage('错误：存在多个实例', 'error');
                         loadingDiv.style.display = 'none';
                     }
-                } else {
-                    loadingDiv.style.display = 'none';
-                }
+                });
             } catch (error) {
                 showMessage('获取状态失败: ' + error.message, 'error');
                 document.getElementById('loading').style.display = 'none';
@@ -1357,12 +1437,14 @@
             const container = document.getElementById('archivesContainer');
             if (!container) return;
             
-            container.innerHTML = `
-                <div class="loading-container" style="min-height: 100px;">
-                    <div class="loading-spinner" style="width: 30px; height: 30px; border-width: 3px;"></div>
-                    <p style="font-size: 0.9em; color: #718096; margin-top: 10px;">正在获取存档列表...</p>
-                </div>
-            `;
+            await updateDynamicContent(container, async () => {
+                container.innerHTML = `
+                    <div class="loading-container" style="min-height: 100px;">
+                        <div class="loading-spinner" style="width: 30px; height: 30px; border-width: 3px;"></div>
+                        <p style="font-size: 0.9em; color: #718096; margin-top: 10px;">正在获取存档列表...</p>
+                    </div>
+                `;
+            });
             
             try {
                 const response = await fetch('/api/archives', {
@@ -1370,50 +1452,54 @@
                 });
                 const data = await response.json();
                 
-                if (data.success) {
-                    if (data.files.length === 0) {
-                        container.innerHTML = `
-                            <div style="text-align: center; padding: 30px; color: #718096;">
-                                <p>没有找到存档文件</p>
-                                ${data.message ? `<p style="font-size: 0.85em; margin-top: 5px;">${data.message}</p>` : ''}
-                            </div>
-                        `;
-                    } else {
-                        let html = '<div class="archives-list">';
-                        data.files.forEach(file => {
-                            // 格式化大小
-                            const size = (file.size / 1024 / 1024).toFixed(2) + ' MB';
-                            // 格式化时间
-                            const date = new Date(file.lastModified).toLocaleString();
-                            
-                            const isProtected = file.key.endsWith('world.zip');
-                            
-                            html += `
-                                <div class="archive-item">
-                                    <div class="archive-info">
-                                        <div class="archive-name">${file.name || file.key}</div>
-                                        <div class="archive-meta">
-                                            <span>${size}</span> • <span>${date}</span>
-                                        </div>
-                                    </div>
-                                    <div class="archive-actions">
-                                        <button class="archive-btn archive-download" onclick="initiateDownload('${file.key}', '${file.name || file.key}')">下载</button>
-                                        ${isProtected 
-                                            ? '<button class="archive-btn archive-delete disabled" title="这是启动服务器的依赖文件，不允许删除" disabled>删除</button>' 
-                                            : `<button class="archive-btn archive-delete" onclick="deleteArchive('${file.key}', '${file.name || file.key}')">删除</button>`
-                                        }
-                                    </div>
+                await updateDynamicContent(container, async () => {
+                    if (data.success) {
+                        if (data.files.length === 0) {
+                            container.innerHTML = `
+                                <div style="text-align: center; padding: 30px; color: #718096;">
+                                    <p>没有找到存档文件</p>
+                                    ${data.message ? `<p style="font-size: 0.85em; margin-top: 5px;">${data.message}</p>` : ''}
                                 </div>
                             `;
-                        });
-                        html += '</div>';
-                        container.innerHTML = html;
+                        } else {
+                            let html = '<div class="archives-list">';
+                            data.files.forEach(file => {
+                                // 格式化大小
+                                const size = (file.size / 1024 / 1024).toFixed(2) + ' MB';
+                                // 格式化时间
+                                const date = new Date(file.lastModified).toLocaleString();
+                                
+                                const isProtected = file.key.endsWith('world.zip');
+                                
+                                html += `
+                                    <div class="archive-item">
+                                        <div class="archive-info">
+                                            <div class="archive-name">${file.name || file.key}</div>
+                                            <div class="archive-meta">
+                                                <span>${size}</span> • <span>${date}</span>
+                                            </div>
+                                        </div>
+                                        <div class="archive-actions">
+                                            <button class="archive-btn archive-download" onclick="initiateDownload('${file.key}', '${file.name || file.key}')">下载</button>
+                                            ${isProtected 
+                                                ? '<button class="archive-btn archive-delete disabled" title="这是启动服务器的依赖文件，不允许删除" disabled>删除</button>' 
+                                                : `<button class="archive-btn archive-delete" onclick="deleteArchive('${file.key}', '${file.name || file.key}')">删除</button>`
+                                            }
+                                        </div>
+                                    </div>
+                                `;
+                            });
+                            html += '</div>';
+                            container.innerHTML = html;
+                        }
+                    } else {
+                        container.innerHTML = `<div class="message error show" style="margin: 0;">${data.message || '获取存档列表失败'}</div>`;
                     }
-                } else {
-                    container.innerHTML = `<div class="message error show" style="margin: 0;">${data.message || '获取存档列表失败'}</div>`;
-                }
+                });
             } catch (err) {
-                container.innerHTML = `<div class="message error show" style="margin: 0;">请求失败: ${err.message}</div>`;
+                await updateDynamicContent(container, async () => {
+                    container.innerHTML = `<div class="message error show" style="margin: 0;">请求失败: ${err.message}</div>`;
+                });
             }
         }
         

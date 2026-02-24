@@ -1161,38 +1161,6 @@ app.get('/api/mc/status', authenticate, checkPermission('read_instance'), async 
   }
 });
 
-// 首页 - 返回登录页面
-app.get('/', (req, res) => {
-  res.render('login');
-});
-
-// 服务器控制台页面
-app.get('/dashboard', webAuth, (req, res) => {
-  res.render('dashboard', {
-    title: '控制台 - MCSpot',
-    port: PORT,
-    baseUrl: `http://localhost:${PORT}`,
-    user: req.auth,
-    mcConfig: {
-      port: process.env.MC_PORT || 25565,
-      version: process.env.MC_VERSION || '未设置'
-    }
-  });
-});
-
-// 终端页面
-app.get('/terminal', webAuth, (req, res) => {
-  // 简单权限检查，如果没有权限则重定向回 dashboard
-  if (!req.auth.permissions.includes('admin')) {
-     return res.redirect('/dashboard');
-  }
-
-  res.render('terminal', {
-    title: '终端 - MCSpot',
-    user: req.auth
-  });
-});
-
 // 获取存档列表
 app.get('/api/archives', authenticate, checkPermission('admin'), async (req, res) => {
   try {
@@ -1401,6 +1369,38 @@ app.delete('/api/archives', authenticate, checkPermission('admin'), async (req, 
     console.error('删除存档失败:', err);
     res.status(500).json({ success: false, message: err.message });
   }
+});
+
+// 首页 - 返回登录页面
+app.get('/', (req, res) => {
+  res.render('login');
+});
+
+// 服务器控制台页面
+app.get('/dashboard', webAuth, (req, res) => {
+  res.render('dashboard', {
+    title: '控制台 - MCSpot',
+    port: PORT,
+    baseUrl: `http://localhost:${PORT}`,
+    user: req.auth,
+    mcConfig: {
+      port: process.env.MC_PORT || 25565,
+      version: process.env.MC_VERSION || '未设置'
+    }
+  });
+});
+
+// 终端页面
+app.get('/terminal', webAuth, (req, res) => {
+  // 简单权限检查，如果没有权限则重定向回 dashboard
+  if (!req.auth.permissions.includes('admin')) {
+     return res.redirect('/dashboard');
+  }
+
+  res.render('terminal', {
+    title: '终端 - MCSpot',
+    user: req.auth
+  });
 });
 
 // API文档页面

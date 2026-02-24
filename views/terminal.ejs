@@ -264,7 +264,10 @@
             color: #a0aec0;
         }
 
-
+        .smooth-height-wrapper {
+            transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow: hidden;
+        }
     </style>
 </head>
 <body>
@@ -333,6 +336,66 @@
 
 
     <script>
+        // 平滑高度过渡助手函数
+        // 挂载在 element 上的属性: _heightTransitionTimeout
+
+        async function updateDynamicContent(actionOrElementId, action) {
+            let wrapper;
+            let callback;
+
+            if (typeof actionOrElementId === 'string') {
+                wrapper = document.getElementById(actionOrElementId);
+                callback = action;
+            } else if (typeof actionOrElementId === 'function') {
+                // 兼容旧用法，默认是 dynamic-content-wrapper (Terminal 页面可能没有这个 ID，需要注意)
+                wrapper = document.getElementById('dynamic-content-wrapper');
+                callback = actionOrElementId;
+            } else {
+                // 假设是 element 对象
+                wrapper = actionOrElementId;
+                callback = action;
+            }
+
+            if (!wrapper) {
+                if (callback) await callback();
+                return;
+            }
+
+            // 清除之前的清理定时器
+            if (wrapper._heightTransitionTimeout) {
+                clearTimeout(wrapper._heightTransitionTimeout);
+            }
+
+            // 确保添加了类
+            if (!wrapper.classList.contains('smooth-height-wrapper')) {
+                wrapper.classList.add('smooth-height-wrapper');
+            }
+
+            // 固定当前高度
+            const currentHeight = wrapper.offsetHeight;
+            wrapper.style.height = currentHeight + 'px';
+
+            // 执行DOM更新
+            if (callback) await callback();
+
+            // 测量新高度
+            wrapper.style.height = 'auto';
+            const newHeight = wrapper.offsetHeight;
+
+            // 恢复到旧高度并强制重绘
+            wrapper.style.height = currentHeight + 'px';
+            wrapper.offsetHeight; // 强制重绘
+
+            // 动画过渡到新高度
+            wrapper.style.height = newHeight + 'px';
+
+            // 动画结束后清理
+            wrapper._heightTransitionTimeout = setTimeout(() => {
+                wrapper.style.height = 'auto';
+                wrapper._heightTransitionTimeout = null;
+            }, 300);
+        }
+
         // 设置当前年份
         document.getElementById('current-year').textContent = new Date().getFullYear();
 
@@ -393,8 +456,13 @@
                     const instance = instanceData.instances[0];
                     // 实例运行状态，允许进入页面
                     if (instance.instanceState === 'RUNNING') {
-                        document.getElementById('main-content').style.display = 'block';
-                        document.getElementById('loading-overlay').style.display = 'none';
+                        // 使用平滑过渡显示主内容
+                        const mainContent = document.getElementById('main-content');
+                        await updateDynamicContent(mainContent, async () => {
+                            mainContent.style.display = 'block';
+                            document.getElementById('loading-overlay').style.display = 'none';
+                        });
+                        
                         loadScripts();
                         
                         const cmdInput = document.getElementById('mc-cmd-input');
@@ -445,29 +513,33 @@
                 });
                 const data = await response.json();
                 
-                if (data.success) {
-                    if (data.scripts.length === 0) {
-                        container.innerHTML = '<p>没有可用的脚本</p>';
-                        return;
+                await updateDynamicContent(container, async () => {
+                    if (data.success) {
+                        if (data.scripts.length === 0) {
+                            container.innerHTML = '<p>没有可用的脚本</p>';
+                            return;
+                        }
+                        
+                        let html = '<div style="display: flex; flex-wrap: wrap; gap: 10px;">';
+                        data.scripts.forEach(item => {
+                            const name = item.name || item;
+                            const script = item.script || item;
+                            html += `
+                                <button class="btn btn-secondary" onclick="executeScript('${script}', '${name}')">
+                                    ${name}
+                                </button>
+                            `;
+                        });
+                        html += '</div>';
+                        container.innerHTML = html;
+                    } else {
+                        container.innerHTML = `<p class="error-text">加载失败: ${data.message}</p>`;
                     }
-                    
-                    let html = '<div style="display: flex; flex-wrap: wrap; gap: 10px;">';
-                    data.scripts.forEach(item => {
-                        const name = item.name || item;
-                        const script = item.script || item;
-                        html += `
-                            <button class="btn btn-secondary" onclick="executeScript('${script}', '${name}')">
-                                ${name}
-                            </button>
-                        `;
-                    });
-                    html += '</div>';
-                    container.innerHTML = html;
-                } else {
-                    container.innerHTML = `<p class="error-text">加载失败: ${data.message}</p>`;
-                }
+                });
             } catch (err) {
-                container.innerHTML = `<p class="error-text">加载错误: ${err.message}</p>`;
+                await updateDynamicContent(container, async () => {
+                    container.innerHTML = `<p class="error-text">加载错误: ${err.message}</p>`;
+                });
             }
         }
 
@@ -479,8 +551,10 @@
             btn.textContent = '测试中...';
 
             const outputDiv = document.getElementById('script-output');
-            outputDiv.style.display = 'block';
-            outputDiv.textContent = '正在测试 SSH 连接...';
+            await updateDynamicContent(outputDiv, async () => {
+                outputDiv.style.display = 'block';
+                outputDiv.textContent = '正在测试 SSH 连接...';
+            });
 
             try {
                 const response = await fetch('/api/ssh/test', {
@@ -489,15 +563,19 @@
                 });
                 const result = await response.json();
 
-                let output = `[${new Date().toLocaleTimeString()}] SSH 连接测试 ${result.success ? '成功' : '失败'}\n`;
-                if (result.ip) output += `连接 IP: ${result.ip}\n`;
-                output += '----------------------------------------\n';
-                if (result.output) output += result.output;
-                if (result.error) output += '\n[ERROR]\n' + result.error;
+                await updateDynamicContent(outputDiv, async () => {
+                    let output = `[${new Date().toLocaleTimeString()}] SSH 连接测试 ${result.success ? '成功' : '失败'}\n`;
+                    if (result.ip) output += `连接 IP: ${result.ip}\n`;
+                    output += '----------------------------------------\n';
+                    if (result.output) output += result.output;
+                    if (result.error) output += '\n[ERROR]\n' + result.error;
 
-                outputDiv.textContent = output;
+                    outputDiv.textContent = output;
+                });
             } catch (err) {
-                outputDiv.textContent = `测试出错: ${err.message}`;
+                await updateDynamicContent(outputDiv, async () => {
+                    outputDiv.textContent = `测试出错: ${err.message}`;
+                });
             } finally {
                 btn.disabled = false;
                 btn.textContent = originalText;
@@ -510,8 +588,10 @@
             if (!confirm(`确定要执行脚本 ${displayName} 吗？`)) return;
             
             const outputDiv = document.getElementById('script-output');
-            outputDiv.style.display = 'block';
-            outputDiv.textContent = `正在执行 ${displayName} ...`;
+            await updateDynamicContent(outputDiv, async () => {
+                outputDiv.style.display = 'block';
+                outputDiv.textContent = `正在执行 ${displayName} ...`;
+            });
             
             try {
                 const response = await fetch(`/api/scripts/${encodeURIComponent(scriptPath)}/exec`, {
@@ -520,14 +600,18 @@
                 });
                 const result = await response.json();
                 
-                let output = `[${new Date().toLocaleTimeString()}] 执行 ${displayName} ${result.success ? '成功' : '失败'}\n`;
-                output += '----------------------------------------\n';
-                if (result.output) output += result.output;
-                if (result.error) output += '\n[ERROR]\n' + result.error;
-                
-                outputDiv.textContent = output;
+                await updateDynamicContent(outputDiv, async () => {
+                    let output = `[${new Date().toLocaleTimeString()}] 执行 ${displayName} ${result.success ? '成功' : '失败'}\n`;
+                    output += '----------------------------------------\n';
+                    if (result.output) output += result.output;
+                    if (result.error) output += '\n[ERROR]\n' + result.error;
+                    
+                    outputDiv.textContent = output;
+                });
             } catch (err) {
-                outputDiv.textContent = `执行出错: ${err.message}`;
+                await updateDynamicContent(outputDiv, async () => {
+                    outputDiv.textContent = `执行出错: ${err.message}`;
+                });
             }
         }
         
@@ -616,8 +700,11 @@
                                     }
                                 }
                                 if (autoScrollCheckbox.checked) {
-                                    mcLogsOutput.scrollTop = mcLogsOutput.scrollHeight;
-                                }
+                                        mcLogsOutput.scrollTo({
+                                            top: mcLogsOutput.scrollHeight,
+                                            behavior: 'smooth'
+                                        });
+                                    }
                             } catch (e) {
                                 console.error('Parse error', e);
                             }
