@@ -319,6 +319,26 @@
             <div id="script-output" style="display: none; margin-top: 15px; padding: 15px; background: #2d3748; color: #fff; border-radius: 8px; font-family: monospace; white-space: pre-wrap; max-height: 300px; overflow-y: auto;"></div>
         </div>
 
+        <div class="card">
+            <h2 class="section-title">
+                挂机模式
+                <span id="afk-status-badge" style="display: none; font-size: 0.6em; padding: 4px 8px; border-radius: 4px; background: #48bb78; color: white; vertical-align: middle; margin-left: 10px; font-weight: normal;">运行中</span>
+            </h2>
+            <div id="afk-container">
+                <p style="margin-bottom: 15px; color: #4a5568; font-size: 0.95em;">开启挂机模式后，状态接口将返回一个实际不存在的玩家，防止因空闲而被自动关闭。</p>
+                <div class="afk-controls" style="display: flex; flex-wrap: wrap; gap: 10px;">
+                    <button class="btn btn-secondary" onclick="setAfkMode(25)">25分钟</button>
+                    <button class="btn btn-secondary" onclick="setAfkMode(55)">55分钟</button>
+                    <button class="btn btn-secondary" onclick="setAfkMode(85)">85分钟</button>
+                    <button class="btn btn-secondary" onclick="setAfkMode(115)">115分钟</button>
+                    <button id="btn-stop-afk" class="btn" style="background-color: #e53e3e; color: white; display: none;" onclick="setAfkMode(0)">停止挂机</button>
+                </div>
+                <div id="afk-info" style="margin-top: 15px; color: #4a5568; display: none; background: #f0fff4; padding: 10px; border-radius: 6px; border: 1px solid #c6f6d5;">
+                    <span style="display: inline-block; margin-right: 5px;">🕒</span> 剩余挂机时间: <span id="afk-time-remaining" style="font-weight: bold; color: #2f855a;">0</span> 分钟
+                </div>
+            </div>
+        </div>
+
         </div>
 
         <div class="footer">
@@ -614,6 +634,67 @@
                 });
             }
         }
+
+        // 设置挂机模式
+        async function setAfkMode(duration) {
+            const action = duration > 0 ? '开启' : '关闭';
+            if (duration > 0 && !confirm(`确定要开启挂机模式 ${duration} 分钟吗？`)) return;
+            if (duration <= 0 && !confirm('确定要停止挂机模式吗？')) return;
+
+            try {
+                const response = await fetch('/api/mc/afk', {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ duration })
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    alert(result.message);
+                    checkAfkStatus(); // 刷新状态
+                } else {
+                    alert(`${action}挂机模式失败: ${result.message}`);
+                }
+            } catch (err) {
+                alert(`${action}挂机模式出错: ${err.message}`);
+            }
+        }
+
+        // 检查挂机状态
+        async function checkAfkStatus() {
+            try {
+                const response = await fetch('/api/mc/afk', {
+                    headers: getAuthHeaders()
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    const afkBadge = document.getElementById('afk-status-badge');
+                    const stopBtn = document.getElementById('btn-stop-afk');
+                    const afkInfo = document.getElementById('afk-info');
+                    const afkTimeSpan = document.getElementById('afk-time-remaining');
+                    const afkContainer = document.getElementById('afk-container');
+
+                    if (result.afkMode) {
+                        await updateDynamicContent(afkContainer, async () => {
+                            afkBadge.style.display = 'inline-block';
+                            stopBtn.style.display = 'block';
+                            afkInfo.style.display = 'block';
+                            const mins = Math.ceil(result.remainingSeconds / 60);
+                            afkTimeSpan.textContent = mins;
+                        });
+                    } else {
+                        await updateDynamicContent(afkContainer, async () => {
+                            afkBadge.style.display = 'none';
+                            stopBtn.style.display = 'none';
+                            afkInfo.style.display = 'none';
+                        });
+                    }
+                }
+            } catch (err) {
+                console.error('检查挂机状态失败:', err);
+            }
+        }
         
         // MC 控制台逻辑
         const mcLogsOutput = document.getElementById('mc-logs');
@@ -785,6 +866,10 @@
             checkServerStatus().then(() => {
                 startLogStream();
             });
+            checkAfkStatus();
+            
+            // 定期刷新挂机状态 (每分钟)
+            setInterval(checkAfkStatus, 60000);
         });
         
         // 页面卸载时关闭连接

@@ -1043,6 +1043,65 @@ app.get('/api/user-info', authenticate, async (req, res) => {
   });
 });
 
+// 设置/取消挂机模式
+app.post('/api/mc/afk', authenticate, checkPermission('admin'), async (req, res) => {
+  const { duration } = req.body;
+  const clientIp = getClientIp(req);
+  const requestId = req.auth.requestId;
+
+  try {
+    // 如果 duration 为 0 或负数，表示取消挂机模式
+    if (typeof duration === 'number' && duration <= 0) {
+      await redisClient.del('mc:afk_mode');
+      await logOperation(requestId, 'AFK_MODE_OFF', clientIp, req.auth.userId, '挂机模式已关闭');
+      return res.json({ success: true, message: '挂机模式已关闭', afkMode: false });
+    }
+
+    if (!duration || typeof duration !== 'number') {
+      return res.status(400).json({ success: false, message: '无效的时长参数' });
+    }
+
+    // 设置挂机模式，过期时间为 duration 分钟
+    await redisClient.set('mc:afk_mode', 'true');
+    await redisClient.expire('mc:afk_mode', duration * 60);
+
+    await logOperation(requestId, 'AFK_MODE_ON', clientIp, req.auth.userId, `挂机模式已开启，时长: ${duration}分钟`);
+    
+    res.json({ 
+      success: true, 
+      message: `挂机模式已开启，持续 ${duration} 分钟`, 
+      afkMode: true,
+      duration 
+    });
+  } catch (err) {
+    console.error('设置挂机模式失败:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// 获取挂机模式状态
+app.get('/api/mc/afk', authenticate, async (req, res) => {
+  try {
+    const ttl = await redisClient.ttl('mc:afk_mode');
+    
+    if (ttl > 0) {
+      res.json({ 
+        success: true, 
+        afkMode: true, 
+        remainingSeconds: ttl 
+      });
+    } else {
+      res.json({ 
+        success: true, 
+        afkMode: false, 
+        remainingSeconds: 0 
+      });
+    }
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 // 获取 Minecraft 服务器状态
 app.get('/api/mc/status', authenticate, checkPermission('read_instance'), async (req, res) => {
   try {
@@ -1138,6 +1197,21 @@ app.get('/api/mc/status', authenticate, checkPermission('read_instance'), async 
       uuid: p.id || ''
     }));
 
+    let playersOnline = data.players?.online || 0;
+    
+    // 检查挂机模式
+    const afkMode = await redisClient.get('mc:afk_mode');
+    const afkTTL = await redisClient.ttl('mc:afk_mode');
+    
+    if (afkMode) {
+      // 挂机模式开启，添加虚拟玩家
+      playerList.push({
+        name: `挂机中 (剩余${Math.ceil(afkTTL / 60)} 分钟)`,
+        uuid: '00000000-0000-0000-0000-000000000000'
+      });
+      playersOnline++;
+    }
+
     // 返回最终状态
     return res.json({
       success: true,
@@ -1145,11 +1219,13 @@ app.get('/api/mc/status', authenticate, checkPermission('read_instance'), async 
       mcOnline: true,
       ip: publicIp,
       port,
-      playersOnline: data.players?.online || 0,
+      playersOnline,
       playersMax: data.players?.max || 0,
       playerList,
       version: data.version?.name || '',
-      motd
+      motd,
+      afkMode: !!afkMode,
+      afkTimeRemaining: afkTTL
     });
 
   } catch (error) {
