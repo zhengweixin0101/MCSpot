@@ -327,10 +327,11 @@
             <div id="afk-container">
                 <p style="margin-bottom: 15px; color: #4a5568; font-size: 0.95em;">开启挂机模式后，状态接口将返回一个实际不存在的玩家，防止因空闲而被自动关闭。</p>
                 <div class="afk-controls" style="display: flex; flex-wrap: wrap; gap: 10px;">
-                    <button class="btn btn-secondary" onclick="setAfkMode(25)">25分钟</button>
-                    <button class="btn btn-secondary" onclick="setAfkMode(55)">55分钟</button>
-                    <button class="btn btn-secondary" onclick="setAfkMode(85)">85分钟</button>
-                    <button class="btn btn-secondary" onclick="setAfkMode(115)">115分钟</button>
+                    <button class="btn btn-secondary" onclick="setAfkMode(30)">30分钟</button>
+                    <button class="btn btn-secondary" onclick="setAfkMode(60)">60分钟</button>
+                    <button class="btn btn-secondary" onclick="setAfkMode(90)">90分钟</button>
+                    <button class="btn btn-secondary" onclick="setAfkMode(120)">120分钟</button>
+                    <button class="btn btn-secondary" onclick="setCustomAfkMode()">自定义</button>
                     <button id="btn-stop-afk" class="btn" style="background-color: #e53e3e; color: white; display: none;" onclick="setAfkMode(0)">停止挂机</button>
                 </div>
                 <div id="afk-info" style="margin-top: 15px; color: #4a5568; display: none; background: #f0fff4; padding: 10px; border-radius: 6px; border: 1px solid #c6f6d5;">
@@ -633,6 +634,20 @@
                     outputDiv.textContent = `执行出错: ${err.message}`;
                 });
             }
+        }
+
+        // 自定义挂机时长
+        function setCustomAfkMode() {
+            const input = prompt('请输入挂机时长（分钟）：', '30');
+            if (input === null) return; // 用户取消
+            
+            const duration = parseInt(input);
+            if (isNaN(duration) || duration <= 0) {
+                alert('请输入有效的正整数时长');
+                return;
+            }
+            
+            setAfkMode(duration);
         }
 
         // 设置挂机模式
