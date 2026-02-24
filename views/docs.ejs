@@ -377,6 +377,30 @@
                         无需参数
                     </div>
                 </li>
+
+                <li class="endpoint-item">
+                    <div class="endpoint-header">
+                        <span class="method post">POST</span>
+                        <span class="path">/api/mc/afk</span>
+                    </div>
+                    <span class="description">开启/关闭挂机模式 (权限: admin)</span>
+                    <div style="margin-top: 10px; padding: 10px; background: #edf2f7; border-radius: 5px;">
+                        <strong>请求参数：</strong><br>
+                        Request Body: <code style="color: #2d3748;">{ "duration": 30 }</code> (duration=0 为关闭)
+                    </div>
+                </li>
+
+                <li class="endpoint-item">
+                    <div class="endpoint-header">
+                        <span class="method get">GET</span>
+                        <span class="path">/api/mc/afk</span>
+                    </div>
+                    <span class="description">获取挂机模式状态 (权限: 任意)</span>
+                    <div style="margin-top: 10px; padding: 10px; background: #edf2f7; border-radius: 5px;">
+                        <strong>请求参数：</strong><br>
+                        无需参数
+                    </div>
+                </li>
             </ul>
         </div>
 
@@ -659,6 +683,38 @@
             <p style="color: #4a5568; margin-top: 15px; margin-bottom: 10px;">删除存档（仅管理员权限）</p>
             <div class="code-block">
                 <code>curl -X DELETE -u admin:password -H "Content-Type: application/json" -d '{"key":"mc/world.zip"}' "<%= baseUrl %>/api/archives"</code>
+            </div>
+
+            <h3 style="color: #2d3748; margin: 25px 0 15px 0;">13. 挂机模式</h3>
+            <p style="color: #4a5568; margin-bottom: 10px;">设置挂机模式 (权限: admin)</p>
+            <div class="code-block">
+                <code>curl -X POST -u admin:password -H "Content-Type: application/json" -d '{"duration": 30}' "<%= baseUrl %>/api/mc/afk"</code>
+            </div>
+            <div style="margin-top: 10px; padding: 10px; background: #edf2f7; border-radius: 5px;">
+                <strong>成功响应示例：</strong>
+                <div class="code-block">
+                    <code>{
+  "success": true,
+  "message": "挂机模式已开启，持续 30 分钟",
+  "afkMode": true,
+  "duration": 30
+}</code>
+                </div>
+            </div>
+
+            <p style="color: #4a5568; margin-top: 15px; margin-bottom: 10px;">获取挂机状态 (权限: 任意)</p>
+            <div class="code-block">
+                <code>curl -u admin:password "<%= baseUrl %>/api/mc/afk"</code>
+            </div>
+            <div style="margin-top: 10px; padding: 10px; background: #edf2f7; border-radius: 5px;">
+                <strong>成功响应示例：</strong>
+                <div class="code-block">
+                    <code>{
+  "success": true,
+  "afkMode": true,
+  "remainingSeconds": 1799
+}</code>
+                </div>
             </div>
         </div>
 
