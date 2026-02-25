@@ -35,9 +35,9 @@ app.set('views', __dirname + '/../views');
 // API 路由
 app.use('/api', authRoutes);
 app.use('/api', instanceRoutes);
-app.use('/api', scriptRoutes);
 app.use('/api', minecraftRoutes);
 app.use('/api', storageRoutes);
+app.use('/api', scriptRoutes);
 
 // Web 页面路由
 app.use('/', webRoutes);
