@@ -1,7 +1,7 @@
 const express = require('express');
 const { authenticate, checkPermission, logOperation } = require('../middleware/auth');
 const { getClientIp } = require('../utils/helpers');
-const { sendMcCommand, createLogStream, getMcServerStatus, setAfkMode, getAfkModeStatus } = require('../services/minecraftService');
+const { sendMcCommand, getMcLogs, createLogStream, getMcServerStatus, setAfkMode, getAfkModeStatus } = require('../services/minecraftService');
 
 const router = express.Router();
 
