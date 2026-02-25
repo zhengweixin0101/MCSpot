@@ -1,6 +1,6 @@
 {
   "name": "mcspot",
-  "version": "4.2.1",
+  "version": "5.0.0",
   "description": "基于腾讯云 API 的 Minecraft 服务器按需启动工具",
   "main": "index.js",
   "scripts": {
