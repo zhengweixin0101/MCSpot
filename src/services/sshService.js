@@ -1,4 +1,4 @@
-const { Client } = require('ssh2');
+const { sshPool } = require('./sshConnectionPool');
 const fs = require('fs');
 const path = require('path');
 const { describeInstancesList } = require('./cvmService');
@@ -56,8 +56,20 @@ async function getSshConfig(requestId, clientIp, userId) {
 }
 
 // 执行SSH命令的通用函数
-function executeSshCommand(config, command, options = {}) {
+async function executeSshCommand(config, command, options = {}) {
+  try {
+    return await sshPool.executeCommand(config, command, options);
+  } catch (error) {
+    // 如果连接池执行失败，尝试创建临时连接作为降级方案
+    console.warn('[SSH] 连接池执行失败，尝试临时连接:', error.message);
+    return executeTemporarySshCommand(config, command, options);
+  }
+}
+
+// 临时SSH连接（降级方案）
+function executeTemporarySshCommand(config, command, options = {}) {
   return new Promise((resolve, reject) => {
+    const { Client } = require('ssh2');
     const conn = new Client();
     let output = '';
     let errorOutput = '';
@@ -113,7 +125,22 @@ async function testSshConnection(publicIp) {
     throw new Error('读取 SSH 私钥失败: ' + err.message);
   }
 
-  return executeSshCommand(config, 'echo "SSH Connection OK" && uptime');
+  try {
+    return await executeSshCommand(config, 'echo "SSH Connection OK" && uptime');
+  } catch (error) {
+    // 测试连接失败，清理可能的损坏连接
+    const key = `${config.host}:${config.port}:${config.username}`;
+    if (sshPool.connections.has(key)) {
+      const connInfo = sshPool.connections.get(key);
+      try {
+        connInfo.client.end();
+      } catch (e) {
+        // 忽略关闭错误
+      }
+      sshPool.connections.delete(key);
+    }
+    throw error;
+  }
 }
 
 // 获取远程脚本列表
@@ -121,65 +148,36 @@ async function getRemoteScripts() {
   const remotePath = process.env.REMOTE_SCRIPT_PATH || '/opt/sh';
   const { config } = await getSshConfig('', '', '');
 
-  return new Promise((resolve, reject) => {
-    const conn = new Client();
+  try {
+    // 尝试读取远程 scripts.json
+    const scriptsJsonPath = path.posix.join(remotePath, 'scripts.json');
+    const result = await executeSshCommand(config, `cat "${scriptsJsonPath}"`);
+    
+    if (result.success) {
+      try {
+        const scripts = JSON.parse(result.output);
+        return { success: true, scripts };
+      } catch (parseErr) {
+        console.warn(`[WARN] 远程 scripts.json 解析失败: ${parseErr.message}`);
+      }
+    }
 
-    conn.on('ready', () => {
-      // 尝试读取远程 scripts.json
-      const scriptsJsonPath = path.posix.join(remotePath, 'scripts.json');
-      conn.exec(`cat "${scriptsJsonPath}"`, (err, stream) => {
-        if (err) {
-          conn.end();
-          return reject(err);
-        }
-
-        let jsonOutput = '';
-        stream.on('close', (code, signal) => {
-          if (code === 0) {
-            // 成功读取到 scripts.json
-            try {
-              const scripts = JSON.parse(jsonOutput);
-              conn.end();
-              return resolve({ success: true, scripts });
-            } catch (parseErr) {
-              console.warn(`[WARN] 远程 scripts.json 解析失败: ${parseErr.message}`);
-              // 解析失败，继续执行 ls
-            }
-          } 
-          
-          // 读取失败或解析失败，降级为 ls 列出 .sh 文件
-          conn.exec(`ls -1 ${remotePath}/*.sh`, (err, stream) => {
-             if (err) {
-               conn.end();
-               return reject(err);
-             }
-
-             let output = '';
-             stream.on('close', (code, signal) => {
-               conn.end();
-               if (code !== 0) {
-                  return resolve({ success: true, scripts: [] });
-               }
-               const files = output.trim().split('\n')
-                 .map(line => {
-                   const fileName = path.basename(line.trim());
-                   return { name: fileName, script: fileName };
-                 })
-                 .filter(item => item.script && item.script.endsWith('.sh'));
-               resolve({ success: true, scripts: files });
-             }).on('data', (data) => {
-               output += data.toString();
-             });
-          });
-
-        }).on('data', (data) => {
-          jsonOutput += data.toString();
-        }).stderr.on('data', () => {});
-      });
-    }).on('error', (err) => {
-      reject(err);
-    }).connect(config);
-  });
+    // 读取失败或解析失败，降级为 ls 列出 .sh 文件
+    const lsResult = await executeSshCommand(config, `ls -1 ${remotePath}/*.sh`);
+    if (lsResult.success && lsResult.output.trim()) {
+      const files = lsResult.output.trim().split('\n')
+        .map(line => {
+          const fileName = path.basename(line.trim());
+          return { name: fileName, script: fileName };
+        })
+        .filter(item => item.script && item.script.endsWith('.sh'));
+      return { success: true, scripts: files };
+    } else {
+      return { success: true, scripts: [] };
+    }
+  } catch (error) {
+    throw error;
+  }
 }
 
 // 执行远程脚本
