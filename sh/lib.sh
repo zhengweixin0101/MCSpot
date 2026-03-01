@@ -1,9 +1,5 @@
 #!/bin/bash
-set -eu
-(set -o pipefail) 2>/dev/null && set -o pipefail
-if [ -n "${BASH_VERSION:-}" ]; then
-    set -E
-fi
+set -Eeuo pipefail
 
 # 日志函数
 log_info() {
@@ -292,16 +288,9 @@ start_mc_server() {
     
     log_info "启动 Minecraft 服务端..."
     
-    local start_command="$MCS_START_COMMAND"
-    start_command="${start_command//\$\{MC_JAR_PATH\}/$MC_JAR_PATH}"
-    start_command="${start_command//\$MC_JAR_PATH/$MC_JAR_PATH}"
-    start_command="${start_command//\$\{MCS_DIR\}/$MCS_DIR}"
-    start_command="${start_command//\$MCS_DIR/$MCS_DIR}"
-    start_command="${start_command//\$\{MC_JAR\}/$MC_JAR}"
-    start_command="${start_command//\$MC_JAR/$MC_JAR}"
-    
-    log_info "启动命令: $start_command"
-    screen -dmS "$SCREEN_NAME" bash -c "exec 200>&-; $start_command"
+    # 启动 screen 时关闭 fd 200，防止锁泄漏
+    log_info "启动命令: $MCS_START_COMMAND"
+    screen -dmS "$SCREEN_NAME" bash -c "exec 200>&-; $MCS_START_COMMAND"
     log_info "Minecraft 服务端已在 screen 会话中启动: $SCREEN_NAME"
     return 0
 }

@@ -1,9 +1,5 @@
 #!/bin/bash
-set -eu
-(set -o pipefail) 2>/dev/null && set -o pipefail
-if [ -n "${BASH_VERSION:-}" ]; then
-    set -E
-fi
+set -Eeuo pipefail
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 
