@@ -147,16 +147,23 @@ compress_world() {
 upload_file() {
     local local_file="$1"
     local remote_path="$2" # 例如: mc/world.zip
+    local resolved_file="$local_file"
 
-    if [ ! -f "$local_file" ]; then
-        log_error "上传失败，本地文件不存在: $local_file"
+    if [ ! -f "$resolved_file" ] && [[ "$resolved_file" != /* ]]; then
+        if [ -f "$MCS_DIR/$resolved_file" ]; then
+            resolved_file="$MCS_DIR/$resolved_file"
+        fi
+    fi
+
+    if [ ! -f "$resolved_file" ]; then
+        log_error "上传失败，本地文件不存在: $resolved_file"
         return 1
     fi
 
     if [ "$STORAGE_TYPE" = "cos" ]; then
         check_command coscli
         log_info "正在上传到腾讯云 COS..."
-        if coscli cp "$local_file" "cos://${COS_BUCKET_ALIAS}/${remote_path}"; then
+        if coscli cp "$resolved_file" "cos://${COS_BUCKET_ALIAS}/${remote_path}"; then
             log_info "上传成功 (COS)"
             return 0
         else
@@ -166,7 +173,7 @@ upload_file() {
     elif [ "$STORAGE_TYPE" = "s3" ]; then
         check_command aws
         log_info "正在上传到 S3..."
-        if aws s3 cp "$local_file" "s3://${S3_BUCKET}/${remote_path}" --endpoint-url "$S3_ENDPOINT"; then
+        if aws s3 cp "$resolved_file" "s3://${S3_BUCKET}/${remote_path}" --endpoint-url "$S3_ENDPOINT"; then
             log_info "上传成功 (S3)"
             return 0
         else
