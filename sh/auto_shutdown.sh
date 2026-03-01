@@ -1,5 +1,9 @@
 #!/bin/bash
-set -Eeuo pipefail
+set -eu
+(set -o pipefail) 2>/dev/null && set -o pipefail
+if [ -n "${BASH_VERSION:-}" ]; then
+    set -E
+fi
 
 # 获取脚本所在目录
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
