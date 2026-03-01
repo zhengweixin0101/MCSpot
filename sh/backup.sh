@@ -40,12 +40,10 @@ trap cleanup EXIT
 
 if [ "$IS_RUNNING" = true ]; then
     log_info "服务器运行中，关闭自动保存并强制保存..."
-    # 使用 screen 发送命令
     screen -S "$SCREEN_NAME" -p 0 -X stuff "save-off$(printf \\r)"
     screen -S "$SCREEN_NAME" -p 0 -X stuff "save-all$(printf \\r)"
-    # 等待保存完成，大型世界可能需要更长时间
-    log_info "等待保存完成 (10s)..."
-    sleep 10
+    # 等待保存完成
+    sleep 5
 fi
 
 # 压缩备份
