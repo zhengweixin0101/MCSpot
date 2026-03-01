@@ -69,9 +69,15 @@ while true; do
 
     PLAYERS=$(echo "$STATUS_JSON" | jq -r '.playersOnline // 0')
 
+    # 检查挂机模式
+    AFK_MODE=$(echo "$STATUS_JSON" | jq -r '.afkMode // false')
+    
     if [ "$ONLINE" == "true" ] && [ "$PLAYERS" -gt 0 ]; then
         IDLE_COUNT=0
         log_info "玩家在线: $PLAYERS，重置空闲计数"
+    elif [ "$AFK_MODE" == "true" ]; then
+        IDLE_COUNT=0
+        log_info "挂机模式已开启，重置空闲计数"
     else
         IDLE_COUNT=$((IDLE_COUNT+1))
         log_info "无玩家在线，空闲计数: $IDLE_COUNT/$IDLE_THRESHOLD"
@@ -86,7 +92,12 @@ while true; do
         if STATUS_JSON=$(curl -s -f -u "$AUTH_USERNAME:$AUTH_PASSWORD" "$API_BASE/api/mc/status"); then
             ONLINE_CHECK=$(echo "$STATUS_JSON" | jq -r '.mcOnline')
             PLAYERS_CHECK=$(echo "$STATUS_JSON" | jq -r '.playersOnline // 0')
-            if [ "$ONLINE_CHECK" == "true" ] && [ "$PLAYERS_CHECK" -gt 0 ]; then
+            AFK_MODE_CHECK=$(echo "$STATUS_JSON" | jq -r '.afkMode // false')
+            if [ "$AFK_MODE_CHECK" == "true" ]; then
+                log_info "二次确认发现挂机模式已开启，取消关服，重置计数"
+                IDLE_COUNT=0
+                continue
+            elif [ "$ONLINE_CHECK" == "true" ] && [ "$PLAYERS_CHECK" -gt 0 ]; then
                 log_info "二次确认发现玩家在线 ($PLAYERS_CHECK)，取消关服，重置计数"
                 IDLE_COUNT=0
                 continue

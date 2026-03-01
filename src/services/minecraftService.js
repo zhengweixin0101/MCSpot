@@ -156,11 +156,20 @@ async function getMcServerStatus() {
 
     // 判断实例状态
     if (instance.InstanceState !== 'RUNNING') {
+      // 检查挂机模式
+      const afkMode = await redisClient.get('mc:afk_mode');
+      const afkTTL = await redisClient.ttl('mc:afk_mode');
+      
       return {
         success: true,
         running: false,
         instanceState: instance.InstanceState,
-        message: '实例未运行'
+        mcOnline: false,
+        afkMode: !!afkMode,
+        afkTimeRemaining: afkTTL,
+        playersOnline: 0,
+        playerList: [],
+        message: '实例未运行' + (afkMode ? '，但挂机模式已开启' : '')
       };
     }
 
@@ -173,12 +182,20 @@ async function getMcServerStatus() {
       publicIp = instance.PublicIpAddress[0];
     }
 
+    // 检查挂机模式
+    const afkMode = await redisClient.get('mc:afk_mode');
+    const afkTTL = await redisClient.ttl('mc:afk_mode');
+
     if (!publicIp) {
       return {
         success: true,
         running: true,
         mcOnline: false,
-        message: '实例运行中，但未分配公网IP'
+        afkMode: !!afkMode,
+        afkTimeRemaining: afkTTL,
+        playersOnline: 0,
+        playerList: [],
+        message: '实例运行中，但未分配公网IP' + (afkMode ? '，挂机模式已开启' : '')
       };
     }
 
@@ -204,7 +221,11 @@ async function getMcServerStatus() {
         mcOnline: false,
         ip: publicIp,
         port,
-        message: '实例运行中，但Minecraft服务未响应',
+        afkMode: !!afkMode,
+        afkTimeRemaining: afkTTL,
+        playersOnline: 0,
+        playerList: [],
+        message: '实例运行中，但Minecraft服务未响应' + (afkMode ? '，挂机模式已开启' : ''),
         error: err.message
       };
     }
@@ -225,20 +246,7 @@ async function getMcServerStatus() {
       uuid: p.id || ''
     }));
 
-    let playersOnline = data.players?.online || 0;
-    
-    // 检查挂机模式
-    const afkMode = await redisClient.get('mc:afk_mode');
-    const afkTTL = await redisClient.ttl('mc:afk_mode');
-    
-    if (afkMode) {
-      // 挂机模式开启，添加虚拟玩家
-      playerList.push({
-        name: `挂机中 (剩余${Math.ceil(afkTTL / 60)} 分钟)`,
-        uuid: '00000000-0000-0000-0000-000000000000'
-      });
-      playersOnline++;
-    }
+    const playersOnline = data.players?.online || 0;
 
     // 返回最终状态
     return {

@@ -800,6 +800,10 @@
                             <span class="user-info-label">在线玩家</span>
                             <span class="user-info-value" id="mc-online-players">-</span>
                         </div>
+                        <div class="user-info-row" id="mc-afk-status-container" style="display: none;">
+                            <span class="user-info-label">挂机状态</span>
+                            <span class="user-info-value" id="mc-afk-status">-</span>
+                        </div>
                         <div class="user-info-row">
                             <span class="user-info-label">游戏版本</span>
                             <span class="user-info-value" id="mc-version">-</span>
@@ -1107,6 +1111,17 @@
                 // 更新玩家数
                 if (data.playersOnline !== undefined && data.playersMax !== undefined) {
                     onlinePlayers.textContent = `${data.playersOnline} / ${data.playersMax}`;
+                }
+
+                // 更新挂机模式状态
+                const afkStatusContainer = document.getElementById('mc-afk-status-container');
+                const afkStatusText = document.getElementById('mc-afk-status');
+                if (data.afkMode) {
+                    const remainingMinutes = Math.ceil((data.afkTimeRemaining || 0) / 60);
+                    afkStatusText.textContent = `剩余 ${remainingMinutes} 分钟`;
+                    afkStatusContainer.style.display = 'block';
+                } else {
+                    afkStatusContainer.style.display = 'none';
                 }
 
                 // 更新版本

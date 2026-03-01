@@ -325,7 +325,7 @@
                 <span id="afk-status-badge" style="display: none; font-size: 0.6em; padding: 4px 8px; border-radius: 4px; background: #48bb78; color: white; vertical-align: middle; margin-left: 10px; font-weight: normal;">运行中</span>
             </h2>
             <div id="afk-container">
-                <p style="margin-bottom: 15px; color: #4a5568; font-size: 0.95em;">开启挂机模式后，状态接口将返回一个实际不存在的玩家，防止因空闲而被自动关闭。</p>
+                <p style="margin-bottom: 15px; color: #4a5568; font-size: 0.95em;">开启挂机模式后，自动关机脚本将识别到挂机状态，防止实例因空闲而被自动删除。</p>
                 <div class="afk-controls" style="display: flex; flex-wrap: wrap; gap: 10px;">
                     <button class="btn btn-secondary" onclick="setAfkMode(30)">30分钟</button>
                     <button class="btn btn-secondary" onclick="setAfkMode(60)">60分钟</button>
