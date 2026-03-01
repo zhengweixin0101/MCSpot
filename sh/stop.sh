@@ -19,10 +19,7 @@ log_info "创建停止标志文件..."
 touch "$STOP_FLAG_FILE"
 
 # 先停止自动关服脚本，防止干扰
-if pgrep -f "auto_shutdown.sh" > /dev/null 2>&1; then
-    log_info "停止自动关服脚本..."
-    pkill -f "auto_shutdown.sh"
-fi
+stop_auto_shutdown
 
 log_info "开始手动停止流程..."
 

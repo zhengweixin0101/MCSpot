@@ -12,6 +12,8 @@ else
     exit 1
 fi
 
+mkdir -p "$(dirname "$LOCK_FILE")"
+
 log_info "初始化自动关服脚本..."
 check_command jq
 check_command curl
@@ -23,21 +25,46 @@ CHECK_INTERVAL="${CHECK_INTERVAL:-120}" # 检测间隔（秒）
 IDLE_COUNT=0
 SHOULD_TERMINATE_ON_ERROR=true
 
+# 处理退出信号
+cleanup() {
+    log_info "接收到退出信号，正在清理..."
+    # 释放文件锁
+    flock -u 200 2>/dev/null || true
+    # 删除锁文件
+    if [ -f "$LOCK_FILE" ]; then
+        rm -f "$LOCK_FILE" 2>/dev/null || true
+    fi
+    log_info "自动关服脚本已退出"
+    exit 0
+}
+
+# 捕获各种退出信号
+trap cleanup EXIT INT TERM HUP
+
 # 删除实例函数
 terminate_instance() {
     log_info "请求删除实例..."
-    curl -s -u "$AUTH_USERNAME:$AUTH_PASSWORD" \
-        "$API_BASE/api/terminate-instance"
-    log_info "实例删除请求已发送"
+    # 允许 curl 失败，以免在 API 服务不可用时导致死循环
+    if curl -s -u "$AUTH_USERNAME:$AUTH_PASSWORD" \
+        "$API_BASE/api/terminate-instance"; then
+        log_info "实例删除请求已发送"
+    else
+        log_warn "实例删除请求发送失败"
+    fi
 }
 
 # 错误清理函数
 cleanup_on_error() {
-    log_error "脚本异常退出，执行清理..."
+    local exit_code=$?
+    log_error "脚本异常退出 (code: $exit_code)，执行清理..."
     if [ "$SHOULD_TERMINATE_ON_ERROR" = true ]; then
+        # 释放文件锁
+        flock -u 200 2>/dev/null || true
+        # 删除锁文件
+        [ -f "$LOCK_FILE" ] && rm -f "$LOCK_FILE" 2>/dev/null || true
         terminate_instance
     fi
-    exit 1
+    exit "$exit_code"
 }
 
 trap cleanup_on_error ERR

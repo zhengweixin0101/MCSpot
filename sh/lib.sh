@@ -1,29 +1,5 @@
 #!/bin/bash
-
-# 加载配置文件
-# 获取脚本所在目录
-LIB_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
-CONFIG_FILE="$LIB_DIR/.env"
-if [ -f "$CONFIG_FILE" ]; then
-    set -a
-    source "$CONFIG_FILE"
-    set +a
-fi
-
-# 默认配置
-MCS_DIR="${MCS_DIR:-/opt/minecraft}"
-MC_JAR="${MC_JAR:-server.jar}"
-MC_JAR_PATH="$MCS_DIR/$MC_JAR"
-STORAGE_TYPE="${STORAGE_TYPE:-s3}"
-S3_ENDPOINT="${S3_ENDPOINT:-}"
-S3_BUCKET="${S3_BUCKET:-}"
-COS_BUCKET_ALIAS="${COS_BUCKET_ALIAS:-mcspot}"
-API_BASE="${API_BASE:-http://localhost:3000}"
-AUTH_USERNAME="${AUTH_USERNAME:-username}"
-AUTH_PASSWORD="${AUTH_PASSWORD:-password}"
-SCREEN_NAME="${SCREEN_NAME:-mc_server}"
-STOP_FLAG_FILE="${LIB_DIR}/tmp/.server_stopped"
-LOCK_FILE="${LIB_DIR}/tmp/.script_lock"
+set -Eeuo pipefail
 
 # 日志函数
 log_info() {
@@ -38,9 +14,67 @@ log_warn() {
     echo "[WARN] $(date '+%Y-%m-%d %H:%M:%S') $1"
 }
 
+# 检查依赖
+check_command() {
+    if ! command -v "$1" &> /dev/null; then
+        log_error "命令 $1 未找到，请先安装"
+        exit 1
+    fi
+}
+
+# 获取脚本所在目录
+get_script_dir() {
+    cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd
+}
+
+# 统一的公共库加载函数
+load_library() {
+    local lib_dir="$(get_script_dir)"
+    local lib_file="$lib_dir/lib.sh"
+    if [ -f "$lib_file" ]; then
+        source "$lib_file"
+    else
+        echo "错误: 找不到 lib.sh" >&2
+        exit 1
+    fi
+}
+
+# 加载配置文件
+LIB_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+CONFIG_FILE="$LIB_DIR/.env"
+if [ -f "$CONFIG_FILE" ]; then
+    set -a
+    source "$CONFIG_FILE"
+    set +a
+fi
+
+# 默认配置
+MCS_DIR="${MCS_DIR:-/opt/mcs}"
+MC_JAR="${MC_JAR:-server.jar}"
+MC_JAR_PATH="$MCS_DIR/$MC_JAR"
+STORAGE_TYPE="${STORAGE_TYPE:-s3}"
+S3_ENDPOINT="${S3_ENDPOINT:-}"
+S3_BUCKET="${S3_BUCKET:-}"
+COS_BUCKET_ALIAS="${COS_BUCKET_ALIAS:-mcspot}"
+API_BASE="${API_BASE:-http://localhost:3000}"
+AUTH_USERNAME="${AUTH_USERNAME:-username}"
+AUTH_PASSWORD="${AUTH_PASSWORD:-password}"
+SCREEN_NAME="${SCREEN_NAME:-mcserver}"
+STOP_FLAG_FILE="${LIB_DIR}/tmp/.server_stopped"
+LOCK_FILE="${LIB_DIR}/tmp/.script_lock"
+CONFIG_FILES="${CONFIG_FILES:-}"
+MCS_START_COMMAND="${MCS_START_COMMAND:-java -Xms2G -Xmx3G -jar \"$MC_JAR_PATH\" nogui}"
+
 # 脚本锁函数
 script_lock() {
-    mkdir -p "$(dirname "$LOCK_FILE")"
+    local lock_dir
+    lock_dir="$(dirname "$LOCK_FILE")"
+    if [ ! -d "$lock_dir" ]; then
+        if ! mkdir -p "$lock_dir"; then
+            log_error "无法创建锁文件目录: $lock_dir"
+            exit 1
+        fi
+    fi
     check_command flock
     
     # 使用文件描述符 200 作为锁文件
@@ -50,14 +84,6 @@ script_lock() {
         log_error "另一个脚本正在运行，当前操作取消"
         # 尝试获取占用锁的进程信息
         fuser "$LOCK_FILE" 2>/dev/null || true
-        exit 1
-    fi
-}
-
-# 检查依赖
-check_command() {
-    if ! command -v "$1" &> /dev/null; then
-        log_error "命令 $1 未找到，请先安装"
         exit 1
     fi
 }
@@ -74,33 +100,46 @@ compress_world() {
 
     check_command zip
     
-    cd "$source_dir" || return 1
-    
-    log_info "正在压缩 world 目录及配置文件..."
-    rm -f "$target_file"
-    
-    # 检查 world 目录是否存在
-    if [ ! -d "world" ]; then
-        log_error "world 目录不存在，无法进行压缩"
-        return 1
-    fi
-
-    # 构建文件列表，仅包含存在的文件
-    FILES_TO_ZIP="world"
-    for f in server.properties eula.txt ops.json whitelist.json banned-players.json banned-ips.json usercache.json; do
-        if [ -f "$f" ]; then
-            FILES_TO_ZIP="$FILES_TO_ZIP $f"
-        fi
-    done
-
-    zip -r "$target_file" $FILES_TO_ZIP > /dev/null 2>&1
+    # 使用子 shell 切换目录，避免影响当前目录
+    (
+        cd "$source_dir" || exit 1
         
-    if [ ! -f "$target_file" ]; then
-        log_error "压缩失败，文件未生成: $target_file"
-        return 1
-    fi
+        log_info "正在压缩 world 目录及配置文件..."
+        rm -f "$target_file"
+        
+        # 检查 world 目录是否存在
+        if [ ! -d "world" ]; then
+            log_error "world 目录不存在，无法进行压缩"
+            exit 1
+        fi
+
+        # 构建文件列表
+        local files_to_zip=("world")
+        
+        # 如果环境变量未设置，使用默认配置文件列表
+        local default_configs="server.properties eula.txt ops.json whitelist.json banned-players.json banned-ips.json usercache.json"
+        local configs_to_check="${CONFIG_FILES:-$default_configs}"
+        
+        # 将字符串拆分为数组并检查文件是否存在
+        for f in $configs_to_check; do
+            if [ -f "$f" ]; then
+                files_to_zip+=("$f")
+            fi
+        done
+
+        if ! zip -r "$target_file" "${files_to_zip[@]}" > /dev/null 2>&1; then
+            log_error "压缩命令执行失败"
+            exit 1
+        fi
+            
+        if [ ! -f "$target_file" ]; then
+            log_error "压缩失败，文件未生成: $target_file"
+            exit 1
+        fi
+        
+        log_info "压缩完成: $target_file ($(du -h "$target_file" | cut -f1))"
+    ) || return 1
     
-    log_info "压缩完成: $target_file ($(du -h "$target_file" | cut -f1))"
     return 0
 }
 
@@ -212,4 +251,114 @@ stop_mc_server() {
     else
         log_info "Minecraft 服务端未运行"
     fi
+}
+
+# 启动 Minecraft 服务器
+start_mc_server() {
+    # 检查依赖
+    check_command screen
+    check_command java
+    
+    if [ ! -f "$MC_JAR_PATH" ]; then
+        log_error "Minecraft 服务端 JAR 文件不存在: $MC_JAR_PATH"
+        return 1
+    fi
+    
+    # 检查 screen 会话是否已存在
+    if screen -list | grep -q "$SCREEN_NAME"; then
+        log_info "Screen 会话 $SCREEN_NAME 已存在，先停止现有服务器..."
+        # 先停止现有的 Minecraft 服务器进程
+        stop_mc_server
+        # 等待一下确保完全停止
+        sleep 2
+        # 强制结束 screen 会话（如果还存在）
+        if screen -list | grep -q "$SCREEN_NAME"; then
+            log_info "结束现有的 screen 会话..."
+            screen -S "$SCREEN_NAME" -X quit
+            sleep 1
+        fi
+    fi
+    
+    log_info "启动 Minecraft 服务端..."
+    
+    # 启动 screen 时关闭 fd 200，防止锁泄漏
+    log_info "启动命令: $MCS_START_COMMAND"
+    screen -dmS "$SCREEN_NAME" bash -c "exec 200>&-; $MCS_START_COMMAND"
+    log_info "Minecraft 服务端已在 screen 会话中启动: $SCREEN_NAME"
+    return 0
+}
+
+# 启动自动关服脚本
+start_auto_shutdown() {
+    local AUTO_SHUTDOWN="${AUTO_SHUTDOWN:-$LIB_DIR/auto_shutdown.sh}"
+    local AUTO_SHUTDOWN_LOG="${AUTO_SHUTDOWN_LOG:-$LIB_DIR/../logs/auto_shutdown.log}"
+    
+    if [ ! -f "$AUTO_SHUTDOWN" ]; then
+        log_warn "自动关服脚本未找到: $AUTO_SHUTDOWN"
+        return 1
+    fi
+    
+    chmod +x "$AUTO_SHUTDOWN"
+
+    # 一次性获取 PID 并检查，避免竞态条件
+    local pid=$(pgrep -f "bash.*auto_shutdown.sh" | head -1)
+    if [ -n "$pid" ]; then
+        log_warn "自动关服脚本已在运行 (PID: $pid)"
+        return 0
+    fi
+    
+    # 检查是否有僵尸进程或挂起的进程
+    if pgrep -f "auto_shutdown" > /dev/null 2>&1; then
+        log_info "发现挂起的自动关服进程，正在清理..."
+        pkill -f "auto_shutdown"
+        sleep 1
+    fi
+    
+    log_info "启动自动关服脚本..."
+    # 启动后台进程时关闭 fd 200，防止锁泄漏
+    nohup "$AUTO_SHUTDOWN" >> "$AUTO_SHUTDOWN_LOG" 2>&1 200>&- &
+    
+    # 等待一下确保启动成功
+    sleep 2
+    local new_pid=$(pgrep -f "bash.*auto_shutdown.sh" | head -1)
+    if [ -n "$new_pid" ]; then
+        log_info "自动关服脚本已后台运行 (PID: $new_pid)"
+        return 0
+    else
+        log_error "自动关服脚本启动失败"
+        return 1
+    fi
+}
+
+# 停止自动关服脚本
+stop_auto_shutdown() {
+    # 一次性获取所有 PID，避免竞态条件
+    local pids=$(pgrep -f "bash.*auto_shutdown.sh")
+    if [ -n "$pids" ]; then
+        log_info "停止自动关服脚本 (PIDs: $pids)..."
+        
+        # 先尝试正常停止
+        pkill -TERM -f "bash.*auto_shutdown.sh"
+        sleep 3
+        
+        # 检查是否还在运行
+        local remaining_pids=$(pgrep -f "bash.*auto_shutdown.sh")
+        if [ -n "$remaining_pids" ]; then
+            log_warn "正常停止失败，强制终止..."
+            pkill -KILL -f "bash.*auto_shutdown.sh"
+            sleep 1
+        fi
+        
+        # 最终检查
+        local final_pids=$(pgrep -f "bash.*auto_shutdown.sh")
+        if [ -n "$final_pids" ]; then
+            log_error "无法停止自动关服脚本 (剩余 PIDs: $final_pids)"
+            return 1
+        else
+            log_info "自动关服脚本已停止"
+        fi
+    else
+        log_info "自动关服脚本未运行"
+    fi
+    return 0
 }
