@@ -8,6 +8,10 @@
     "script": "stop.sh"
   },
   {
+    "name": "上传存档",
+    "script": "upload.sh"
+  },
+  {
     "name": "手动备份",
     "script": "backup.sh"
   }
