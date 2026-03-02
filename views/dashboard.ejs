@@ -1447,16 +1447,76 @@
                 clearInterval(mcStatusPollingInterval);
             }
         });
+        // 缓存管理
+        const CACHE_KEY = 'mcspot_archives_cache';
+        const CACHE_EXPIRY = 2 * 60 * 60 * 1000; // 2小时
+
+        // 获取缓存数据
+        function getCachedArchives() {
+            try {
+                const cached = localStorage.getItem(CACHE_KEY);
+                if (cached) {
+                    const { data, timestamp } = JSON.parse(cached);
+                    if (Date.now() - timestamp < CACHE_EXPIRY) {
+                        return data;
+                    }
+                }
+            } catch (err) {
+                console.warn('读取缓存失败:', err);
+            }
+            return null;
+        }
+
+        // 设置缓存数据
+        function setCachedArchives(data) {
+            try {
+                const cacheData = {
+                    data: data,
+                    timestamp: Date.now()
+                };
+                localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
+            } catch (err) {
+                console.warn('保存缓存失败:', err);
+            }
+        }
+
+        // 清除缓存
+        function clearArchivesCache() {
+            try {
+                localStorage.removeItem(CACHE_KEY);
+            } catch (err) {
+                console.warn('清除缓存失败:', err);
+            }
+        }
+
+        // 检查是否为缓存数据
+        function isFromCache(data) {
+            const cached = getCachedArchives();
+            return cached && JSON.stringify(cached) === JSON.stringify(data);
+        }
+
         // 存档管理
-        async function loadArchives() {
+        async function loadArchives(forceRefresh = false) {
             const container = document.getElementById('archivesContainer');
             if (!container) return;
             
+            // 检查缓存
+            if (!forceRefresh) {
+                const cachedData = getCachedArchives();
+                if (cachedData) {
+                    renderArchives(cachedData, true); // 从缓存渲染
+                    return;
+                }
+            }
+            
+            // 显示加载状态
             await updateDynamicContent(container, async () => {
                 container.innerHTML = `
                     <div class="loading-container" style="min-height: 100px;">
                         <div class="loading-spinner" style="width: 30px; height: 30px; border-width: 3px;"></div>
-                        <p style="font-size: 0.9em; color: #718096; margin-top: 10px;">正在获取存档列表...</p>
+                        <p style="font-size: 0.9em; color: #718096; margin-top: 10px;">
+                            ${forceRefresh ? '正在刷新存档列表...' : '正在获取存档列表...'}
+                        </p>
                     </div>
                 `;
             });
@@ -1467,55 +1527,70 @@
                 });
                 const data = await response.json();
                 
-                await updateDynamicContent(container, async () => {
-                    if (data.success) {
-                        if (data.files.length === 0) {
-                            container.innerHTML = `
-                                <div style="text-align: center; padding: 30px; color: #718096;">
-                                    <p>没有找到存档文件</p>
-                                    ${data.message ? `<p style="font-size: 0.85em; margin-top: 5px;">${data.message}</p>` : ''}
-                                </div>
-                            `;
-                        } else {
-                            let html = '<div class="archives-list">';
-                            data.files.forEach(file => {
-                                // 格式化大小
-                                const size = (file.size / 1024 / 1024).toFixed(2) + ' MB';
-                                // 格式化时间
-                                const date = new Date(file.lastModified).toLocaleString();
-                                
-                                const isProtected = file.key.endsWith('world.zip');
-                                
-                                html += `
-                                    <div class="archive-item">
-                                        <div class="archive-info">
-                                            <div class="archive-name">${file.name || file.key}</div>
-                                            <div class="archive-meta">
-                                                <span>${size}</span> • <span>${date}</span>
-                                            </div>
-                                        </div>
-                                        <div class="archive-actions">
-                                            <button class="archive-btn archive-download" onclick="initiateDownload('${file.key}', '${file.name || file.key}')">下载</button>
-                                            ${isProtected 
-                                                ? '<button class="archive-btn archive-delete disabled" title="这是启动服务器的依赖文件，不允许删除" disabled>删除</button>' 
-                                                : `<button class="archive-btn archive-delete" onclick="deleteArchive('${file.key}', '${file.name || file.key}')">删除</button>`
-                                            }
-                                        </div>
-                                    </div>
-                                `;
-                            });
-                            html += '</div>';
-                            container.innerHTML = html;
-                        }
-                    } else {
+                if (data.success) {
+                    // 缓存数据
+                    setCachedArchives(data);
+                    renderArchives(data, false);
+                } else {
+                    await updateDynamicContent(container, async () => {
                         container.innerHTML = `<div class="message error show" style="margin: 0;">${data.message || '获取存档列表失败'}</div>`;
-                    }
-                });
+                    });
+                }
             } catch (err) {
                 await updateDynamicContent(container, async () => {
                     container.innerHTML = `<div class="message error show" style="margin: 0;">请求失败: ${err.message}</div>`;
                 });
             }
+        }
+
+
+
+        // 渲染存档列表
+        async function renderArchives(data, fromCache) {
+            const container = document.getElementById('archivesContainer');
+            if (!container) return;
+            
+            await updateDynamicContent(container, async () => {
+                if (data.files.length === 0) {
+                    container.innerHTML = `
+                        <div style="text-align: center; padding: 30px; color: #718096;">
+                            <p>没有找到存档文件</p>
+                            ${data.message ? `<p style="font-size: 0.85em; margin-top: 5px;">${data.message}</p>` : ''}
+                        </div>
+                    `;
+                } else {
+                    let html = '<div class="archives-list">';
+                    
+                    data.files.forEach(file => {
+                        // 格式化大小
+                        const size = (file.size / 1024 / 1024).toFixed(2) + ' MB';
+                        // 格式化时间
+                        const date = new Date(file.lastModified).toLocaleString();
+                        
+                        const isProtected = file.key.endsWith('world.zip');
+                        
+                        html += `
+                            <div class="archive-item">
+                                <div class="archive-info">
+                                    <div class="archive-name">${file.name || file.key}</div>
+                                    <div class="archive-meta">
+                                        <span>${size}</span> • <span>${date}</span>
+                                    </div>
+                                </div>
+                                <div class="archive-actions">
+                                    <button class="archive-btn archive-download" onclick="initiateDownload('${file.key}', '${file.name || file.key}')">下载</button>
+                                    ${isProtected 
+                                        ? '<button class="archive-btn archive-delete disabled" title="这是启动服务器的依赖文件，不允许删除" disabled>删除</button>' 
+                                        : `<button class="archive-btn archive-delete" onclick="deleteArchive('${file.key}', '${file.name || file.key}')">删除</button>`
+                                    }
+                                </div>
+                            </div>
+                        `;
+                    });
+                    html += '</div>';
+                    container.innerHTML = html;
+                }
+            });
         }
         
         // 发起下载
@@ -1581,7 +1656,8 @@
                 
                 if (data.success) {
                     showMessage('删除成功', 'success');
-                    loadArchives(); // 重新加载列表
+                    clearArchivesCache(); // 清除缓存
+                    loadArchives(true); // 强制重新加载列表
                 } else {
                     showMessage('删除失败: ' + data.message, 'error');
                     buttons.forEach(btn => btn.disabled = false);
@@ -1595,7 +1671,7 @@
         // 绑定刷新按钮
         const refreshBtn = document.getElementById('refreshArchives');
         if (refreshBtn) {
-            refreshBtn.addEventListener('click', loadArchives);
+            refreshBtn.addEventListener('click', () => loadArchives(true)); // 强制刷新
         }
         
         // 初始加载
